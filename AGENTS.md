@@ -1,25 +1,20 @@
 # AGENTS.md
 
 ## Project
-- **Purpose**: Linear programming solver (Simplex method + graphical method). Early stage.
+- **Purpose**: Linear programming solver (Simplex method + graphical method).
 - **Python**: 3.13, managed by **uv** (not pip/conda).
-- **Entry point**: `main.py` (single-file app so far).
+- **Entry point**: `main.py`.
 
 ## Dependencies
-- `fastapi[standard]` — web framework (backend planned).
-- `matplotlib` — plotting for graphical method visualization.
+- `fastapi[standard]` — web framework.
+- `matplotlib` — plotting.
 
 ## Commands
 ```bash
-uv run main.py          # run the app
-uv add <package>        # add dependency
-uv sync                 # install/refresh deps from pyproject.toml
+uv run main.py
+uv add <package>
+uv sync
 ```
 
-## Layout
-- Single-file app currently. If `src/` or `tests/` appear, treat as new package boundaries.
-- `.venv/` is the virtual env; never commit.
-
 ## Conventions
-- Spanish domain terms in code (`restricciones`, `funcion_objetivo`, `metodoGrafico`). Follow this for LP domain naming.
-- No lint/typecheck/test tooling configured yet. Do not assume ruff, mypy, or pytest.
+- Spanish domain terms in code.
