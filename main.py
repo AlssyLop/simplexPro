@@ -1,16 +1,18 @@
-import numpy as np
 import sys
-
-# Forzar salida en UTF-8 para evitar errores con caracteres de caja en Windows
-sys.stdout.reconfigure(encoding='utf-8')
+import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
+import io
+import base64
+import json
+
+
+# Forzar salida en UTF-8 para caracteres de caja en Windows
+sys.stdout.reconfigure(encoding='utf-8')
 
 def metodoGrafico(problemaPL):
     """
     Metodo grafico para resolver problemas de Programación Lineal de 2 variables.
     """
-    
     vars_nombres = problemaPL["variables"]
     restricciones = problemaPL["restricciones"]
     fo = problemaPL["funcion_objetivo"]
@@ -45,8 +47,7 @@ def metodoGrafico(problemaPL):
                     puntos_v.append(p)
 
     if not puntos_v:
-        print("Error: No se encontró una región factible.")
-        return
+        return {"Error": "No se encontró una región factible."}
 
     # --- PASO 3: Evaluación de la Función Objetivo ---
     resultados = []
@@ -114,18 +115,20 @@ def metodoGrafico(problemaPL):
     plt.title(f"Método Gráfico - Optimización {tipo_opt.upper()} Z = {fo['x']}x + {fo['y']}y", fontsize=14)
     plt.legend(loc='upper right', fontsize=9)
 
-    # Salida
-    print("\n" + "="*40)
-    print(f" RESULTADOS FINALES ({tipo_opt.upper()})")
-    print("="*40)
+    # Guardar resultados
+    resultado = {}
+    resultado['funcion_objetivo'] = f"{fo['x']}x + {fo['y']}y"
     for i, rv in enumerate(resultados):
-        print(f"Vértice {i+1}: x={round(rv['p'][0])}, y={round(rv['p'][1])} | Z={rv['z']:.1f}")
-    print("-" * 40)
-    print(f"PUNTO ÓPTIMO: ({optimo['p'][0]:.2f}, {optimo['p'][1]:.2f})")
-    print(f"VALOR Z MÁXIMO: {optimo['z']:.2f}")
-    print("="*40 + "\n")
-
-    plt.show()
+        resultado[f'valor_{i+1}'] = f"f({rv['p'][0]}, {rv['p'][1]}) = {fo['x']}*({rv['p'][0]}) + {fo['y']}*({rv['p'][1]}) = {rv['z']:.2f}"
+    resultado['mensaje'] = f"La solución óptima es: {optimo['p'][0]:.2f} {vars_nombres['x']} y {optimo['p'][1]:.2f} {vars_nombres['y']} con la que se obtiene un {tipo_opt.upper()} de {optimo['z']:.2f}"
+    
+    #convertir la imagen a base64
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    resultado['img'] = base64.b64encode(buf.getvalue()).decode('utf-8')
+    
+    return resultado
 
 
 def metodoSimplex(problemaPL):
@@ -157,7 +160,7 @@ def metodoSimplex(problemaPL):
 
     cols = vars_keys + holguras + artificiales + ["R"]
     num_cols = len(cols)
-    
+
     tabla = np.zeros((num_res + 1, num_cols))
     z_row = num_res
 
@@ -165,18 +168,18 @@ def metodoSimplex(problemaPL):
     for j, vk in enumerate(vars_keys):
         val = fo.get(vk, 0)
         tabla[z_row, j] = -val if tipo_opt == "max" else val
-            
+
     base = []
     cb = []
-    
+
     h_idx = 0
     a_idx = 0
     for i, r in enumerate(restricciones):
         for j, vk in enumerate(vars_keys):
             tabla[i, j] = r.get(vk, 0)
-            
+
         tabla[i, -1] = r["valor"]
-        
+
         if r["signo"] == "<=":
             tabla[i, num_vars + h_idx] = 1
             base.append(holguras[h_idx])
@@ -211,78 +214,79 @@ def metodoSimplex(problemaPL):
                 tabla[z_row, :] += M * tabla[i, :]
             a_idx += 1
 
-    def print_tabla(iteracion, tabla, base, cb, entra=None, sale=None, pivote=None):
-        print(f"\n" + "="*50)
-        print(f" ITERACIÓN {iteracion}")
-        print("="*50)
-        if entra and sale:
-            print(f"Entra: {entra} | Sale: {sale} | Elemento pivote: {pivote:.2f}")
-            
-        df = pd.DataFrame(tabla, columns=cols)
-        df.insert(0, "Base", base + ["Z"])
-        
-        # Cb column (costes)
-        cb_str = [f"{c:.0f}" if abs(c) < M else ("-M" if c < 0 else "M") for c in cb] + ["-"]
-        df.insert(0, "Cb", cb_str)
+    # --- Helpers ---
+    def fmt(v):
+        """Entero si no tiene decimales, float redondeado a 2 si los tiene."""
+        if isinstance(v, float) and abs(v) < 1e-8:
+            return 0
+        rounded = round(float(v), 2)
+        return int(rounded) if rounded == int(rounded) else rounded
 
-        # Truncar números muy pequeños a 0 para limpieza visual
-        df[cols] = df[cols].map(lambda x: 0.0 if abs(x) < 1e-8 else x)
-        
-        # Para evitar valores M en la impresión de R en la fila Z
-        df["R"] = df["R"].astype(object)
-        if abs(df.at[z_row, "R"]) > M / 10:
-             val_z = df.at[z_row, "R"]
-             if val_z > 0: df.at[z_row, "R"] = f"{val_z/M:.2f}M"
-             else: df.at[z_row, "R"] = f"{val_z/M:.2f}M"
-        
-        df_str = df.round(2).astype(str)
-        str_lines = df_str.to_string(index=False).split('\n')
-        ancho = max(len(line) for line in str_lines) + 2
-        
-        print("┌" + "─" * ancho + "┐")
-        for line in str_lines:
-            print(f"│ {line:<{ancho-1}}│")
-        print("└" + "─" * ancho + "┘")
+    def tabla_a_dict(tabla_np, base_actual, cb_actual):
+        """Convierte todas las filas (restricciones + fila Z) a dict columna→lista."""
+        data = {}
+        # cb: valores de restricciones + "" para la fila Z
+        data["cb"] = [fmt(c) if abs(c) < M else ("-M" if c < 0 else "M") for c in cb_actual] + [""]
+        data["base"] = list(base_actual) + ["Z"]
+        for col_name, col_idx in zip(cols[:-1], range(len(cols) - 1)):  # sin "R"
+            data[col_name] = [fmt(tabla_np[row, col_idx]) for row in range(num_res + 1)]
+        data["R"] = [fmt(tabla_np[row, -1]) for row in range(num_res + 1)]
+        return data
 
-    iteracion = 0
-    print_tabla(iteracion, tabla, base, cb)
+    
+
+    tabla_ant = tabla_a_dict(tabla, list(base), list(cb))
+    iteraciones = []
+    resultado = {}
+
+    def guardar_iteracion(entra,sale,pivote,razon_minima):
+        iteracion = {
+            "entra": entra,
+            "sale": sale,
+            "elemento_pivote": pivote,
+            "razon_minima": razon_minima,
+            "tabla": tabla_ant,
+        }
+        iteraciones.append(iteracion)
 
     while True:
         z_vals = tabla[z_row, :-1]
-        
+
         if tipo_opt == "max":
             if np.all(z_vals >= -1e-8):
+                guardar_iteracion("","","","")    
                 break
-            col_pivote = np.argmin(z_vals)
+            col_pivote = int(np.argmin(z_vals))
         else:
             if np.all(z_vals <= 1e-8):
+                guardar_iteracion("","","","") 
                 break
-            col_pivote = np.argmax(z_vals)
-            
+            col_pivote = int(np.argmax(z_vals))
+
         col_vals = tabla[:-1, col_pivote]
         rhs = tabla[:-1, -1]
         ratios = np.full(num_res, np.inf)
-        
+
         for i in range(num_res):
             if col_vals[i] > 1e-8:
                 ratios[i] = rhs[i] / col_vals[i]
-                
+
         if np.all(ratios == np.inf):
-            print("\nError: Problema no acotado.")
-            return
-            
-        fila_pivote = np.argmin(ratios)
+            return {"Error": "El problema no tiene solución (es no acotado)."}
+
+        fila_pivote = int(np.argmin(ratios))
         pivote = tabla[fila_pivote, col_pivote]
-        
+        razon_minima = ratios[fila_pivote]
+
         entra = cols[col_pivote]
         sale = base[fila_pivote]
-        
+
         # Operaciones Gauss-Jordan
         tabla[fila_pivote, :] /= pivote
         for i in range(num_res + 1):
             if i != fila_pivote:
                 tabla[i, :] -= tabla[i, col_pivote] * tabla[fila_pivote, :]
-                
+
         base[fila_pivote] = entra
         if entra in vars_keys:
             cb[fila_pivote] = fo.get(entra, 0) if tipo_opt == "max" else -fo.get(entra, 0)
@@ -290,33 +294,46 @@ def metodoSimplex(problemaPL):
             cb[fila_pivote] = 0
         elif entra in artificiales:
             cb[fila_pivote] = -M if tipo_opt == "max" else M
-            
-        iteracion += 1
-        print_tabla(iteracion, tabla, base, cb, entra, sale, pivote)
 
-    print("\n" + "="*50)
-    print(" RESULTADOS FINALES SIMPLEX")
-    print("="*50)
+        guardar_iteracion(entra,sale,fmt(pivote),fmt(razon_minima))
+        tabla_ant = tabla_a_dict(tabla, list(base), list(cb))
+    
+    resultado["iteraciones"] = iteraciones
+
+    # --- Resultados finales ---
     z_val = tabla[z_row, -1]
     if tipo_opt == "min":
         z_val = -z_val
-    print(f"Z = {z_val:,.2f}")
-    
+
+    solucion = {"Z": fmt(z_val)}
     for vk in vars_keys:
         val = tabla[base.index(vk), -1] if vk in base else 0
-        print(f"{vk.upper()} = {val:,.2f} ({vars_nombres[vk]})")
-        
+        solucion[vk] = fmt(val)
+
     for hk in holguras:
         val = tabla[base.index(hk), -1] if hk in base else 0
-        print(f"{hk} = {val:,.2f}")
-    print("="*50 + "\n")
+        solucion[hk] = fmt(val)
+
+    # Mensaje interpretativo
+    vars_optimas = [f"{fmt(solucion[vk])} de {vars_nombres[vk]}" for vk in vars_keys]
+    #Crear mensaje general para cualquier problema: 
+    solucion["mensaje"] = (
+        f"El valor óptimo de la función objetivo es: {solucion['Z']} "
+        + f"y para {tipo_opt} se debe "
+        + ", ".join(vars_optimas)
+    )
+    
+
+    resultado["optimo"] = solucion
+    return resultado
+
     
 
 # Un agricultor tiene 600 hectáreas en las que puede sembrar maíz o cebada y dispone de 800 horas de trabajo durante la temporada. 
 # Los márgenes de utilidad por hectárea para el maíz son de 60€ y para la cebada es de 70€. Los requerimientos laborales para trabajar en la siembra de maíz es de 1 hora por hectárea y en la siembra de cebada es de 2 horas por hectárea. 
 # ¿Cuántas hectáreas de cada cultivo debe sembrar para maximizar su utilidad?, ¿Cuál es la utilidad máxima?
 
-problemaPL2 = {
+problemaGrafico = {
     "variables": {"x": "nº de hectáreas de maíz", "y": "nº de hectáreas de cebada"},
     "restricciones": [
         {"x": 1, "y": 1, "signo": "<=", "valor": 600},
@@ -328,22 +345,6 @@ problemaPL2 = {
     "funcion_objetivo": {"x": 60, "y": 70, "tipo": "max"},
 }
 
-# Una empresa decide, por el día del trabajador, llevar de paseo a la playa a 400 trabajadores (por lo menos). 
-# Para ello contrata a una compañía de transporte, la cual dispone de autobuses para 60 pasajeros y microbuses para 20 pasajeros. 
-# El precio de alquiler de cada autobús es de 250€ y de cada microbús de 200€. 
-# La compañía de transporte solo dispone ese día de 8 choferes profesionales. 
-# ¿Qué número de autobuses y microbuses deben contratarse para que el costo sea mínimo?
-
-problemaPL = {
-    "variables": {"x": "nº de autobuses", "y": " nº de microbuses"},
-    "restricciones": [
-        {"x": 60, "y": 20, "signo": ">=", "valor": 400},
-        {"x": 1, "y": 1, "signo": "<=", "valor": 8},
-        {"x":1, "y": 0, "signo": ">=", "valor": 0},
-        {"x": 0, "y": 1, "signo": ">=", "valor": 0}
-    ],
-    "funcion_objetivo": {"x": 250, "y": 200, "tipo": "min"},
-}
 
 """
 Ejemplo 1:
@@ -360,7 +361,7 @@ X1  ≤ 40
 X1, X2 ≥ 0
 """
 
-problemaPL3 = {
+problemaSimplex = {
     "variables": {"x1": "productoA", "x2": "productoB"},
     "restricciones": [
         {"x1": 1, "x2": 6, "signo": "<=", "valor": 20},
@@ -370,168 +371,14 @@ problemaPL3 = {
     "funcion_objetivo": {"x1": 2, "x2": 5, "tipo": "max"},
 }
 
-"""
-Ejemplo 2:
-Función objetivo
-Maximizar: Z= 5000 X1 + 6500 X2 + 9000 X3 + 1200 X4
-Sujeto a:
-X1 ≤ 8
-X2 ≤ 15
-X3 ≤ 15
-X4 ≤ 11
-800 X1 + 926 X2 + 290 X3 + 480 X4 ≤ 8500
-X3 + X4 ≤ 5
-280 X3 + 390 X4 ≤ 1700
-"""
-
-problemaPL4 = {
-    "variables": {"x1": "productoA", "x2": "productoB", "x3": "productoC", "x4": "productoD"},
-    "restricciones": [
-        {"x1": 1, "x2": 0, "x3": 0, "x4": 0, "signo": "<=", "valor": 8},
-        {"x1": 0, "x2": 1, "x3": 0, "x4": 0, "signo": "<=", "valor": 15},
-        {"x1": 0, "x2": 0, "x3": 1, "x4": 0, "signo": "<=", "valor": 15},
-        {"x1": 0, "x2": 0, "x3": 0, "x4": 1, "signo": "<=", "valor": 11},
-        {"x1": 800, "x2": 926, "x3": 290, "x4": 480, "signo": "<=", "valor": 8500},
-        {"x1": 0, "x2": 0, "x3": 1, "x4": 1, "signo": "<=", "valor": 5},
-        {"x1": 0, "x2": 0, "x3": 280, "x4": 390, "signo": "<=", "valor": 1700}
-    ],
-    "funcion_objetivo": {"x1": 5000, "x2": 6500, "x3": 9000, "x4": 1200, "tipo": "max"},
-}
-
-
-"""
-Ejercicio propuesto 1
-Un joven empresario pretende abrir un local en el centro de la ciudad
-para atender a tres tipos de perros A, B y C, los cuales deben pasar por los
-cuartos de baño, secado y peluquería. Se ha estimado que el tiempo en
-horas de cada perro en cada cuarto es el expresado en la Tabla 4. Así mismo
-se establece la utilidad que genera cada perro después de la operación en
-miles de pesos colombianos.
-
-Tiempo en horas                                | Utilidad en pesos
--------------------------------------------------------------------
-Perro            | Baño  | Secado | Peluquería |  colombianos ($)
---------------------------------------------------------------------
-A                  | 1     | 1      | 2          | $ 60.000
-B                  | 2     | 1      | 2          | $ 70.000
-C                  | 3     | 1      | 3          | $ 80.000 
-
-El empresario decide limitar el tiempo de servicio a 110 horas para baños, 
-120 horas para secado y 180 horas para peluquería. ¿Cuántos perros de cada tipo 
-debe atender para maximizar su utilidad?
-
-El tiempo disponible para los tres cuartos será de 72 horas semanales
-¿A qué cantidad de cada tipo de perro A, B y C debe el local prestar el
-servicio para maximizar las ganancias? Si se espera prestar el servicio por
-lo menos a 10 perros del tipo C por semana.
-—Formulación del modelo
-Variables de decisión
-X1 = Perro tipo A
-X2 = Perro tipo B
-X3 = Perro tipo C
-—Función objetivo
-Maximizar Z= $60.000X1 +$70.000X2 +$80.000X3
-Sujeto a:
-X1 + 2X2 + 3X3 ≤ 72
-(Horas máximas disponibles del cuarto de baño)
-X1 + X2 + X3 ≤ 72
-(Horas máximas disponibles del cuarto de secado)
-2X1 + 2X2 + 3X3 ≤ 72
-(Horas máximas disponibles del cuarto de peluquería)
-X3 ≥ 10
-(Número de perros tipo C mínimos para prestar el servicio por semana)
-X1, X2, X3 ≥ 0
-"""
-
-problemaPL5 = {
-    "variables": {"x1": "perroA", "x2": "perroB", "x3": "perroC"},
-    "restricciones": [
-        {"x1": 1, "x2": 2, "x3": 3, "signo": "<=", "valor": 72},
-        {"x1": 1, "x2": 1, "x3": 1, "signo": "<=", "valor": 72},
-        {"x1": 2, "x2": 2, "x3": 3, "signo": "<=", "valor": 72},
-        {"x1": 0, "x2": 0, "x3": 1, "signo": ">=", "valor": 10}
-    ],
-    "funcion_objetivo": {"x1": 60000, "x2": 70000, "x3": 80000, "tipo": "max"},
-}
-
-"""
-Ejercicio propuesto 2
-Una empresa de labiales ha sacado a la venta tres tipos de colores:
-morado, rosado y rojo. Estos labiales tienen una utilidad de $100 pesos
-colombianos cada uno. La producción mensual solo puede llegar hasta
-500 unidades de labiales. Se conoce que las mujeres prefieren el labial
-rojo con mayor frecuencia, debido a esto la compañía ha estimado
-producir mensualmente mínimo 250 unidades de labiales rojos,
-máximo 100 unidades de labiales morados.
-
-Debido a la mala administración de las ventas y a los respectivos
-pronósticos, la empresa en el último mes ha producido labiales de
-referencias no demandadas con mayor frecuencia, razón por la cual se
-ha generado inventario de productos en el almacén. Por este motivo la
-empresa quiere conocer cuál es la cantidad de cada labial a producir
-para maximizar las ganancias. También desea saber cómo superar las
-ganancias de la producción del mes pasado que fueron de $30.000 pesos
-colombianos.
-
-Formulación del modelo
-Variables de decisión
-X1 = Labiales Morados
-X2 = Labiales rosados
-X3 = Labiales rojos
-Función objetivo
-Maximizar Z= 100X1 + 100X2 + 100X3
-Sujeto a
-X1 + X2 + X3 = 500
-(Cantidad de unidades a producir mensualmente)
-X3 ≥ 250
-(Producción mínima de labial rojo)
-X1 ≤ 100
-(Producción máxima de labial morado)
-X1 + X2 + X3 ≥ 30000
-(Utilidad minina mensual en pesos colombianos)
-X1 + X2 + X3 ≥ 0
-"""
-
-problemaPL6 = {
-    "variables": {"x1": "labialesMorados", "x2": "labialesRosados", "x3": "labialesRojos"},
-    "restricciones": [
-        {"x1": 1, "x2": 1, "x3": 1, "signo": "=", "valor": 500},
-        {"x1": 0, "x2": 0, "x3": 1, "signo": ">=", "valor": 250},
-        {"x1": 1, "x2": 0, "x3": 0, "signo": "<=", "valor": 100},
-        {"x1": 100, "x2": 100, "x3": 100, "signo": ">=", "valor": 30000},
-        {"x1": 1, "x2": 1, "x3": 1, "signo": ">=", "valor": 0}
-    ],
-    "funcion_objetivo": {"x1": 100, "x2": 100, "x3": 100, "tipo": "max"},
-}
-
 if __name__ == "__main__":
-    # --- Resultados Esperados para problemaPL3, problemaPL4, problemaPL5, problemaPL6 ---
-    metodoSimplex(problemaPL3)
-    # Z = 40
-    # X1= 20, X2= 0, S1= 0, S2= 40, S3= 20
-    
-    metodoSimplex(problemaPL4)
-    # Z = 944.870
-    # X1 = 0
-    # X2 = 7.61
-    # X3 = 5
-    
-    metodoSimplex(problemaPL5)
-    # Las ncias de la empresa debe ofertar el servicio a perros del tipo B y C, para
-    # atender un total de 21 perros del tipo B y 10 perros del tipo C, obteniendo
-    # así una ganancia de $2´270.000 pesos colombianos semanales.
-    # Z= 2270000
-    # X1= 0, X2=21, X3=10
-    
+    grafico = metodoGrafico(problemaGrafico)
+    print(json.dumps(grafico, indent=4, ensure_ascii=False))
+    print("\n Solución Optima: ", grafico["mensaje"])
 
-    metodoSimplex(problemaPL6)
-    # ―Solución óptima: La empresa para maximizar ganancias debe
-    # producir una cantidad de 100 unidades de labiales morados, 150 unidades
-    # de labiales rosados y de labiales rojos un total de 250 unidades. De este
-    # modo se podría obtener una utilidad de $50.000 pesos colombianos, lo
-    # cual representa una diferencia favorable de $20.000 pesos colombianos
-    # respecto al mes pasado.
-    # Z = 50000
-    # X1 = 100
-    # X2 = 150
-    # X3 = 250
+    print("\n ====================================================================================================== \n")
+
+    simplez = metodoSimplex(problemaSimplex)
+    print(json.dumps(simplez, indent=4, ensure_ascii=False))
+    print("\n Solución Optima: ", simplez["optimo"])
+    
