@@ -1,0 +1,106 @@
+### Testear Endpoints de SimplexPro API
+
+@host = http://localhost:8000
+
+### 1. Método Gráfico: Caso Correcto
+POST {{host}}/grafico
+Content-Type: application/json
+
+{
+    "variables": {
+        "x": "hectáreas de maíz",
+        "y": "hectáreas de cebada"
+    },
+    "restricciones": [
+        {"x": 1, "y": 1, "signo": "<=", "valor": 600},
+        {"x": 1, "y": 2, "signo": "<=", "valor": 800},
+        {"x": 1, "y": 0, "signo": ">=", "valor": 0},
+        {"x": 0, "y": 1, "signo": ">=", "valor": 0}
+    ],
+    "funcion_objetivo": {
+        "x": 60,
+        "y": 70,
+        "tipo": "max"
+    }
+}
+
+###
+
+### 2. Método Gráfico: Caso Incorrecto (Faltan variables)
+POST {{host}}/grafico
+Content-Type: application/json
+
+{
+    "variables": {
+        "x": "solo x"
+    },
+    "restricciones": [
+        {"x": 1, "y": 1, "signo": "<=", "valor": 600}
+    ],
+    "funcion_objetivo": {
+        "x": 60,
+        "y": 70,
+        "tipo": "max"
+    }
+}
+
+###
+
+### 3. Método Simplex: Caso Correcto
+POST {{host}}/simplex
+Content-Type: application/json
+
+{
+    "variables": {
+        "x1": "productoA",
+        "x2": "productoB"
+    },
+    "restricciones": [
+        {"x1": 1, "x2": 6, "signo": "<=", "valor": 20},
+        {"x1": 1, "x2": 1, "signo": "<=", "valor": 60},
+        {"x1": 1, "x2": 0, "signo": "<=", "valor": 40}
+    ],
+    "funcion_objetivo": {
+        "x1": 2,
+        "x2": 5,
+        "tipo": "max"
+    }
+}
+
+###
+
+### 4. Método Simplex: Caso Incorrecto (Signo no válido)
+POST {{host}}/simplex
+Content-Type: application/json
+
+{
+    "variables": {
+        "x1": "v1"
+    },
+    "restricciones": [
+        {"x1": 1, "signo": "INVALIDO", "valor": 10}
+    ],
+    "funcion_objetivo": {
+        "x1": 100,
+        "tipo": "max"
+    }
+}
+
+###
+
+### 5. Método Simplex: Caso Incorrecto (Tipo de optimización inválido)
+POST {{host}}/simplex
+Content-Type: application/json
+
+{
+    "variables": {
+        "x1": "v1"
+    },
+    "restricciones": [
+        {"x1": 1, "signo": "<=", "valor": 10}
+    ],
+    "funcion_objetivo": {
+        "x1": 100,
+        "tipo": "OTRO"
+    }
+}
