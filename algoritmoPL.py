@@ -110,10 +110,10 @@ def metodoGrafico(problemaPL):
     plt.legend(loc='upper right', fontsize=9)
 
     # Guardar resultados
-    resultado = {}
+    resultado = {"valores_fo":[]}
     resultado['funcion_objetivo'] = f"{fo['x']}x + {fo['y']}y"
     for i, rv in enumerate(resultados):
-        resultado[f'valor_{i+1}'] = f"f({rv['p'][0]}, {rv['p'][1]}) = {fo['x']}*({rv['p'][0]}) + {fo['y']}*({rv['p'][1]}) = {rv['z']:.2f}"
+        resultado['valores_fo'].append(f"f({rv['p'][0]}, {rv['p'][1]}) = {fo['x']}*({rv['p'][0]}) + {fo['y']}*({rv['p'][1]}) = {rv['z']:.2f}")
     resultado['mensaje'] = f"La solución óptima es: {optimo['p'][0]:.2f} {vars_nombres['x']} y {optimo['p'][1]:.2f} {vars_nombres['y']} con la que se obtiene un {tipo_opt.upper()} de {optimo['z']:.2f}"
     
     #convertir la imagen a base64
