@@ -1,5 +1,7 @@
 import io
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import base64
 
@@ -123,7 +125,8 @@ def metodoGrafico(problemaPL):
     
     #convertir la imagen a base64
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
     buf.seek(0)
     resultado['img'] = base64.b64encode(buf.getvalue()).decode('utf-8')
     
