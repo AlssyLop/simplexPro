@@ -1,5 +1,5 @@
 import aiosqlite
-from schemas import ProblemaPLCreate
+from app.schemas.problema import ProblemaPLCreate
 import uuid
 import json
 import re

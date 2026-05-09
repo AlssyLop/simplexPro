@@ -7,7 +7,7 @@ import json
 from algoritmoPL import metodoGrafico, metodoSimplex
 from controlador import validar_grafico, validar_simplex
 from database import get_db, init_db
-from schemas import (
+from app.schemas.problema import (
     ProblemaPLCreate, 
     ProblemaPLResponse, 
     ResumenProblema, 
