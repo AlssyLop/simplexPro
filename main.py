@@ -4,7 +4,8 @@ from typing import List, Annotated
 import aiosqlite
 import json
 
-from algoritmoPL import metodoGrafico, metodoSimplex
+from app.services.grafico import metodoGrafico
+from app.services.simplex import metodoSimplex
 from app.validators.problema import validar_grafico, validar_simplex
 from app.db.connection import get_db, init_db
 from app.schemas.problema import (
