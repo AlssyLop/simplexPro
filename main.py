@@ -15,7 +15,7 @@ from app.schemas.problema import (
     ProblemaPLBase
 )
 import crud
-from exportador import generar_pdf_grafico
+from app.services.exportador import generar_pdf_grafico
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
