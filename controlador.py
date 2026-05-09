@@ -34,17 +34,17 @@ def validar_grafico(problemaPL: dict):
 
     # 2. Variables: debe contener exactamente 'x' e 'y'
     if not isinstance(variables, dict):
-        errores.append("'variables' debe ser un objeto/diccionario.")
+        errores.append("variable requerido.")
     else:
         for var in ("x", "y"):
             if var not in variables:
-                errores.append(f"'variables' debe contener la clave '{var}'.")
+                errores.append(f"Variable '{var}' faltante.")
             elif not isinstance(variables[var], str) or not variables[var].strip():
-                errores.append(f"El nombre de la variable '{var}' debe ser una cadena no vacía.")
+                errores.append(f"El nombre de la variable '{var}' es requerido.")
 
     # 3. Restricciones: lista no vacía
     if not isinstance(restricciones, list) or len(restricciones) == 0:
-        errores.append("'restricciones' debe ser una lista con al menos un elemento.")
+        errores.append("restricciones es requerido.")
     else:
         for idx, r in enumerate(restricciones):
             prefijo = f"Restricción [{idx}]"
@@ -53,31 +53,31 @@ def validar_grafico(problemaPL: dict):
                 continue
             for var in ("x", "y"):
                 if var not in r:
-                    errores.append(f"{prefijo}: falta el coeficiente '{var}'.")
+                    errores.append(f"{prefijo}: falta coeficiente '{var}'.")
                 elif not _es_numero(r[var]):
-                    errores.append(f"{prefijo}: el coeficiente '{var}' debe ser numérico.")
+                    errores.append(f"{prefijo}: coeficiente '{var}' debe ser numérico.")
             if "signo" not in r:
                 errores.append(f"{prefijo}: falta 'signo'.")
             elif r["signo"] not in SIGNOS_GRAFICO:
-                errores.append(f"{prefijo}: 'signo' debe ser uno de {SIGNOS_GRAFICO}.")
+                errores.append(f"{prefijo}: signo inválido. Use <= o >=.")
             if "valor" not in r:
-                errores.append(f"{prefijo}: falta 'valor'.")
+                errores.append(f"{prefijo}: falta 'valor' (constante).")
             elif not _es_numero(r["valor"]):
-                errores.append(f"{prefijo}: 'valor' debe ser numérico.")
+                errores.append(f"{prefijo}: valor constante debe ser numérico.")
 
     # 4. Función objetivo
     if not isinstance(fo, dict):
-        errores.append("'funcion_objetivo' debe ser un objeto/diccionario.")
+        errores.append("función objetivo requerida.")
     else:
         for var in ("x", "y"):
             if var not in fo:
-                errores.append(f"'funcion_objetivo' falta el coeficiente '{var}'.")
+                errores.append(f"Coeficiente '{var}' faltante en función objetivo.")
             elif not _es_numero(fo[var]):
-                errores.append(f"'funcion_objetivo.{var}' debe ser numérico.")
+                errores.append(f"Coeficiente '{var}' en función objetivo debe ser numérico.")
         if "tipo" not in fo:
-            errores.append("'funcion_objetivo' falta 'tipo'.")
+            errores.append("Tipo de optimización ('max'/'min') faltante.")
         elif fo["tipo"].lower() not in TIPOS_OPT:
-            errores.append(f"'funcion_objetivo.tipo' debe ser 'max' o 'min', recibido: '{fo['tipo']}'.")
+            errores.append(f"Tipo de optimización inválido: '{fo['tipo']}'. Use 'max' o 'min'.")
 
     if errores:
         raise HTTPException(status_code=422, detail=errores)
@@ -108,49 +108,48 @@ def validar_simplex(problemaPL: dict):
 
     # 2. Variables: dict con al menos 1 variable, nombres tipo string
     if not isinstance(variables, dict) or len(variables) == 0:
-        errores.append("'variables' no es valido")
+        errores.append("'Las variables' no son validas.")
     else:
         for var, nombre in variables.items():
             if not isinstance(nombre, str) or not nombre.strip():
-                errores.append(f"El nombre de la variable '{var}' no es valido")
+                errores.append(f"Nombre para variable '{var}' inválido.")
 
     vars_keys = list(variables.keys()) if isinstance(variables, dict) else []
 
     # 3. Restricciones: lista no vacía
     if not isinstance(restricciones, list) or len(restricciones) == 0:
-        errores.append("'restricciones' no es valido")
+        errores.append("'restricciones' no son validas.")
     else:
         for idx, r in enumerate(restricciones):
-            prefijo = f"Restricción [{idx}]"
             if not isinstance(r, dict):
-                errores.append(f"{prefijo}: debe ser un objeto")
+                errores.append("Restricción inválida.")
                 continue
             # Coeficientes de variables
             for var in vars_keys:
                 if var in r and not _es_numero(r[var]):
-                    errores.append(f"{prefijo}: el coeficiente '{var}' no es valido")
+                    errores.append(f"Restricción {idx}: el coeficiente '{var}' no es valido")
             # signo
             if "signo" not in r:
-                errores.append(f"{prefijo}: falta el signo")
+                errores.append(f"Restricción {idx}: falta signo.")
             elif r["signo"] not in SIGNOS_SIMPLEX:
-                errores.append(f"{prefijo}: el signo no es valido")
+                errores.append(f"Restricción {idx}: signo inválido. Use <=, >= o =.")
             # valor
             if "valor" not in r:
-                errores.append(f"{prefijo}: falta el valor")
+                errores.append(f"Restricción {idx}: falta valor constante.")
             elif not _es_numero(r["valor"]):
-                errores.append(f"{prefijo}: el valor no es valido")
+                errores.append(f"{prefijo}: valor constante debe ser numérico.")
 
     # 4. Función objetivo
     if not isinstance(fo, dict):
-        errores.append("'funcion_objetivo' no es valido")
+        errores.append("'función objetivo' no es valida")
     else:
         for var in vars_keys:
             if var in fo and not _es_numero(fo[var]):
-                errores.append(f"'funcion_objetivo.{var}' no es valido")
+                errores.append(f"El coeficiente '{var}' no es valido")
         if "tipo" not in fo:
-            errores.append("'funcion_objetivo' falta el tipo")
+            errores.append("Tipo de optimización faltante en FO.")
         elif fo["tipo"].lower() not in TIPOS_OPT:
-            errores.append(f"'funcion_objetivo' el tipo no es valido")
+            errores.append(f"Tipo '{fo['tipo']}' inválido. Use 'max' o 'min'.")
 
     if errores:
         raise HTTPException(status_code=422, detail=errores)

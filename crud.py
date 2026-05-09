@@ -180,7 +180,7 @@ async def save_resultado_grafico(db: aiosqlite.Connection, problema_id: str, res
 
     valores_fo_json = json.dumps(resultado.get("valores_fo", []))
     mensaje = resultado.get("mensaje", "")
-
+    
     # Borrar si ya existe un resultado anterior para este problema
     await db.execute("DELETE FROM metodoGrafico WHERE problemaID = ?", (problema_id,))
     

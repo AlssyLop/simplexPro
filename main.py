@@ -98,9 +98,9 @@ async def validar_problema(problema: ProblemaPLCreate):
         if len(prob_dict["variables"]) == 2:
             validar_grafico(prob_dict)
         validar_simplex(prob_dict)
-        return {"mensaje": "Ok", "valido": True}
+        return {"status": "Ok"}
     except HTTPException as e:
-        return {"mensaje": "Piedra rota", "valido": False, "errores": e.detail}
+        return {"mensaje": "El problema no es valido", "status": "Error"}
 
 @app.get("/problemas/{id}/exportar", tags=["Utilidad"])
 async def exportar_problema(id: str, db: DbDep):
