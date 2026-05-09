@@ -7,15 +7,17 @@ POST {{host}}/grafico
 Content-Type: application/json
 
 {
+    "titulo": "Problema 1",
+    "descripcion": "Producción de abono",
     "variables": {
         "x": "hectáreas de maíz",
         "y": "hectáreas de cebada"
     },
     "restricciones": [
-        {"x": 1, "y": 1, "signo": "<=", "valor": 600},
-        {"x": 1, "y": 2, "signo": "<=", "valor": 800},
-        {"x": 1, "y": 0, "signo": ">=", "valor": 0},
-        {"x": 0, "y": 1, "signo": ">=", "valor": 0}
+        {"x": 1, "y": 1, "signo": "<=", "valor": 600, "glosa": "Hectáreas disponibles"},
+        {"x": 1, "y": 2, "signo": "<=", "valor": 800, "glosa": "Hectáreas disponibles"},
+        {"x": 1, "y": 0, "signo": ">=", "valor": 0, "glosa": "Hectáreas disponibles"},
+        {"x": 0, "y": 1, "signo": ">=", "valor": 0, "glosa": "Hectáreas disponibles"}
     ],
     "funcion_objetivo": {
         "x": 60,
@@ -104,3 +106,67 @@ Content-Type: application/json
         "tipo": "OTRO"
     }
 }
+
+### 6. Listar Problemas
+GET {{host}}/problemas
+
+### 7. Guardar Nuevo Problema
+# @name crearProblema
+POST {{host}}/problemas
+Content-Type: application/json
+
+{
+    "titulo": "Problema desde HTTP",
+    "descripcion": "Guardado para CRUD",
+    "variables": {
+        "x": "Producto A",
+        "y": "Producto B"
+    },
+    "restricciones": [
+        {"x": 2, "y": 3, "signo": "<=", "valor": 100, "glosa": "Materia prima"}
+    ],
+    "funcion_objetivo": {
+        "x": 50,
+        "y": 40,
+        "tipo": "max"
+    }
+}
+
+### 8. Actualizar Problema (Usar ID de respuesta anterior)
+@problemaId = {{crearProblema.response.body.id}}
+PUT {{host}}/problemas/{{problemaId}}
+Content-Type: application/json
+
+{
+    "titulo": "Problema Actualizado",
+    "descripcion": "Descripción nueva",
+    "variables": {
+        "x": "Producto A+",
+        "y": "Producto B+"
+    },
+    "restricciones": [
+        {"x": 2, "y": 3, "signo": "<=", "valor": 150, "glosa": "Más materia prima"}
+    ],
+    "funcion_objetivo": {
+        "x": 60,
+        "y": 50,
+        "tipo": "max"
+    }
+}
+
+### 9. Validar Problema (Sin resolver)
+POST {{host}}/validar
+Content-Type: application/json
+
+{
+    "titulo": "Validación Simple",
+    "variables": {"x": "X", "y": "Y"},
+    "restricciones": [{"x": 1, "y": 1, "signo": "<=", "valor": 5}],
+    "funcion_objetivo": {"x": 1, "y": 1, "tipo": "max"}
+}
+
+### 10. Borrar Problema
+DELETE {{host}}/problemas/{{problemaId}}
+
+### 11. Exportar Problema
+GET {{host}}/problemas/{{problemaId}}/exportar
