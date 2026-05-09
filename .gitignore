@@ -11,3 +11,7 @@ wheels/
 
 # AI/Code generation
 .agent/
+
+# Database and SQL
+simplexPro.db
+simplexPro.sql

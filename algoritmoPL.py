@@ -299,24 +299,23 @@ def metodoSimplex(problemaPL):
     if tipo_opt == "min":
         z_val = -z_val
 
-    solucion = {"Z": fmt(z_val)}
+    solucion = {"valores_fo": {"Z": fmt(z_val)}}
     for vk in vars_keys:
         val = tabla[base.index(vk), -1] if vk in base else 0
-        solucion[vk] = fmt(val)
+        solucion["valores_fo"][vk] = fmt(val)
 
-    for hk in holguras:
-        val = tabla[base.index(hk), -1] if hk in base else 0
-        solucion[hk] = fmt(val)
-
-    # Mensaje interpretativo
-    vars_optimas = [f"{fmt(solucion[vk])} de {vars_nombres[vk]}" for vk in vars_keys]
+    vars_optimas = [f"{fmt(solucion['valores_fo'][vk])} de {vars_nombres[vk]}" for vk in vars_keys]
     #Crear mensaje general para cualquier problema: 
     solucion["mensaje"] = (
-        f"El valor óptimo de la función objetivo es: {solucion['Z']} "
-        + f"y para {tipo_opt} se debe "
+        f"La solución óptima {tipo_opt.upper()} es: Z = {solucion['valores_fo']['Z']} "
+        + f"y para obtenerla se debe hacer "
         + ", ".join(vars_optimas)
     )
+    funcion_objetivo = f"{tipo_opt.upper()} Z = "
+    for key, value in fo.items():
+        if key != "tipo":
+            funcion_objetivo += f"{value}{key} + "
     
-
-    resultado["optimo"] = solucion
+    resultado["funcion_objetivo"] = funcion_objetivo.strip().rstrip('+').strip()
+    resultado["solucion_optima"] = solucion
     return resultado
