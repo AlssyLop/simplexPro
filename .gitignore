@@ -10,8 +10,10 @@ wheels/
 .venv
 
 # AI/Code generation
-.agent/
+.agents/
 
 # Database and SQL
 simplexPro.db
-simplexPro.sql
+
+#scratch
+scratch/
