@@ -5,7 +5,7 @@ import aiosqlite
 import json
 
 from algoritmoPL import metodoGrafico, metodoSimplex
-from controlador import validar_grafico, validar_simplex
+from app.validators.problema import validar_grafico, validar_simplex
 from app.db.connection import get_db, init_db
 from app.schemas.problema import (
     ProblemaPLCreate, 
