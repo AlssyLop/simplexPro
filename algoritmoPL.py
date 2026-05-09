@@ -46,8 +46,8 @@ def metodoGrafico(problemaPL):
     # --- PASO 3: Evaluación de la Función Objetivo ---
     resultados = []
     for v in puntos_v:
-        # Validar si (v[0]->x,v[1]->y) son enteros y redondear si no lo son
-        if v[0] % 1 != 0:
+        # Validar si son enteros y redondear si no lo son
+        if v[0] % 1 != 0: 
             v[0] = round(v[0])
         if v[1] % 1 != 0:
             v[1] = round(v[1])
@@ -112,9 +112,14 @@ def metodoGrafico(problemaPL):
     # Guardar resultados
     resultado = {"valores_fo":[]}
     resultado['funcion_objetivo'] = f"{fo['x']}x + {fo['y']}y"
+    tipo = ""
     for i, rv in enumerate(resultados):
-        resultado['valores_fo'].append(f"f({rv['p'][0]}, {rv['p'][1]}) = {fo['x']}*({rv['p'][0]}) + {fo['y']}*({rv['p'][1]}) = {rv['z']:.2f}")
-    resultado['mensaje'] = f"La solución óptima es: {optimo['p'][0]:.2f} {vars_nombres['x']} y {optimo['p'][1]:.2f} {vars_nombres['y']} con la que se obtiene un {tipo_opt.upper()} de {optimo['z']:.2f}"
+        if rv['z'] == optimo['z']:
+            tipo = tipo_opt.upper()
+        else:
+            tipo = ""
+        resultado['valores_fo'].append(f"f({rv['p'][0]:.0f}, {rv['p'][1]:.0f}) = {fo['x']}*({rv['p'][0]:.0f}) + {fo['y']}*({rv['p'][1]:.0f}) = {rv['z']:,.2f} " + tipo)                  
+    resultado['mensaje'] = f"La solución óptima es: {optimo['p'][0]:,.0f} {vars_nombres['x']} y {optimo['p'][1]:,.0f} {vars_nombres['y']} con la que se obtiene un {tipo_opt.upper()} de {optimo['z']:,.2f}"
     
     #convertir la imagen a base64
     buf = io.BytesIO()
@@ -299,18 +304,25 @@ def metodoSimplex(problemaPL):
     if tipo_opt == "min":
         z_val = -z_val
 
-    solucion = {"valores_fo": {"Z": fmt(z_val)}}
+    solucion = {}
+    vars_optimas = ""
+    valorFo = f"Z = "
     for vk in vars_keys:
         val = tabla[base.index(vk), -1] if vk in base else 0
-        solucion["valores_fo"][vk] = fmt(val)
-
-    vars_optimas = [f"{fmt(solucion['valores_fo'][vk])} de {vars_nombres[vk]}" for vk in vars_keys]
+        valorFo += f"{fmt(val)}{vk} + "
+        if fmt(val) != 0:
+            vars_optimas += f"{fmt(val):,} {vars_nombres[vk]}, "
+    solucion["valor_fo"] = f"{valorFo.strip().rstrip('+').strip()} = {fmt(z_val):,}"
+    vars_optimas = vars_optimas.strip().rstrip(',').strip()
     #Crear mensaje general para cualquier problema: 
-    solucion["mensaje"] = (
-        f"La solución óptima {tipo_opt.upper()} es: Z = {solucion['valores_fo']['Z']} "
-        + f"y para obtenerla se debe hacer "
-        + ", ".join(vars_optimas)
-    )
+    if vars_optimas == "":
+        solucion["mensaje"] = (
+            f"El {tipo_opt.upper()} óptimo es: {fmt(z_val):,}"
+        )
+    else:
+        solucion["mensaje"] = (
+            f"La solución óptima es: {vars_optimas} con la que se obtiene un {tipo_opt.upper()} de {fmt(z_val):,}"
+        )
     funcion_objetivo = f"{tipo_opt.upper()} Z = "
     for key, value in fo.items():
         if key != "tipo":
