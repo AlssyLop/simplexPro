@@ -1,27 +1,48 @@
 # SimplexPro
 
-**SimplexPro** es una herramienta en Python diseñada para resolver problemas de **Programación Lineal** mediante el **Método Gráfico** (para 2 variables) y el **Método Simplex** (para N variables). 
+**SimplexPro** es una herramienta en Python diseñada para resolver problemas de **Programación Lineal** mediante el **Método Gráfico** (para 2 variables) y el **Método Simplex** (para N variables). Ofrece una API RESTful construida con FastAPI, almacenamiento en SQLite y generación de reportes en PDF.
 
 ---
 
 ## Características
 
-- **Resolución por Método Gráfico**: Encuentra automáticamente los vértices de la región factible y visualiza el problema.
+- **API REST con FastAPI**: Endpoints estructurados para operaciones CRUD y resolución.
+- **Resolución por Método Gráfico**: Encuentra automáticamente los vértices de la región factible y visualiza el problema (soporta exportación a PDF).
 - **Resolución por Método Simplex**:
   - Soporte para **Maximización y Minimización**.
   - Manejo de restricciones `<=`, `>=` e `=`.
   - Implementación del método de la **Gran M (Big-M)** para variables artificiales.
   - Retorno detallado de cada tabla iterativa.
-- **Preparado para API**: Las funciones principales retornan diccionarios compatibles con JSON.
-- **Visualización**: Gráficos generados con `matplotlib` y convertidos a **Base64** para fácil transmisión web.
+- **Validación Robusta**: Uso de **Pydantic V2** para validar esquemas y datos JSON.
+- **Persistencia**: Base de datos asíncrona SQLite (`aiosqlite`) para guardar problemas y sus resultados.
+- **Visualización**: Gráficos generados con `matplotlib` y convertidos a **Base64** para transmisión web.
 
 ---
 
 ## Tecnologías
 
+- **Web Framework**: FastAPI (Async)
 - **Gestor de dependencias**: uv
+- **Base de Datos**: SQLite (aiosqlite)
 - **Cálculo Numérico**: NumPy
 - **Visualización**: Matplotlib
+- **Generación PDF**: fpdf2
+
+---
+
+## Estructura del Proyecto
+
+Arquitectura modular por capas:
+```
+simplexPro/
+├── main.py                 # Entry point de FastAPI
+├── app/
+│   ├── db/                 # Conexión DB y operaciones CRUD
+│   ├── schemas/            # Modelos Pydantic (Validación)
+│   ├── services/           # Lógica de negocio (Gráfico, Simplex, Exportador)
+│   ├── validators/         # Validaciones específicas del dominio
+│   └── routes/             # Endpoints (resolución, problemas, utilidad)
+```
 
 ---
 
@@ -34,65 +55,36 @@ Este proyecto utiliza `uv` para una gestión de dependencias rápida y eficiente
 uv sync
 ```
 
-### 2. Ejecutar la aplicación
+### 2. Ejecutar la API
+El servidor de desarrollo se inicia con FastAPI:
 ```bash
-uv run main.py
+uv run fastapi dev main.py
 ```
+La API estará disponible en `http://127.0.0.1:8000`.
+Documentación interactiva Swagger: `http://127.0.0.1:8000/docs`.
 
 ---
 
-## Estructura del Código y Retorno JSON
+## Estructura del Problema (JSON)
 
-El archivo principal `main.py` contiene las funciones núcleo que retornan estructuras de datos listas para JSON:
+Ejemplo de payload aceptado por los endpoints (`/grafico` o `/simplex`):
 
-### `metodoGrafico(problemaPL)`
-Retorna un diccionario con:
-- `puntos`: Lista de todos los puntos de intersección evaluados.
-- `optimo`: Punto que maximiza/minimiza la función.
-- `mensaje`: Interpretación textual del resultado.
-- `img`: Imagen del gráfico en formato **Base64**.
-
-### `metodoSimplex(problemaPL)`
-Retorna un diccionario con:
-- `iteraciones`: Lista de objetos que representan cada paso del Simplex:
-    - `tabla`: El estado de la matriz (incluyendo etiquetas de base, valores de Cb y columna R).
-    - `entra` / `sale`: Variables que entran y salen de la base.
-    - `elemento_pivote`: Valor del pivote utilizado.
-    - `razon_minima`: Valor de la razón mínima para la salida.
-- `optimo`: Resultados finales (valor de Z y variables de decisión).
-
----
-
-## Uso
-
-### Estructura del Problema
-```python
-# Ejemplo de entrada
-problema = {
-    "variables": {"x1": "Producto A", "x2": "Producto B"},
+```json
+{
+    "titulo": "Problema de ejemplo",
+    "descripcion": "Descripción opcional",
+    "variables": {"x": "Producto A", "y": "Producto B"},
     "restricciones": [
-        {"x1": 1, "x2": 6, "signo": "<=", "valor": 20},
-        {"x1": 1, "x2": 1, "signo": "<=", "valor": 60}
+        {"x": 1, "y": 6, "signo": "<=", "valor": 20},
+        {"x": 1, "y": 1, "signo": "<=", "valor": 60}
     ],
-    "funcion_objetivo": {"x1": 2, "x2": 5, "tipo": "max"},
+    "funcion_objetivo": {"x": 2, "y": 5, "tipo": "max"}
 }
-```
-
-### Ejemplo de Integración
-```python
-import json
-from main import metodoSimplex
-
-resultado = metodoSimplex(problema)
-print(json.dumps(resultado, indent=4))
 ```
 
 ---
 
 ## Próximos Pasos
 
-- Creación de una API REST con **FastAPI**.
 - Interfaz web interactiva con **React**.
-- Exportación de resultados a formatos PDF/Excel.
-
----
+- Exportación de resultados a formato Excel.
