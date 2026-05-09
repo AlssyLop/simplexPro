@@ -1,5 +1,7 @@
 import aiosqlite
 import os
+from typing import Annotated
+from fastapi import Depends
 
 DB_PATH = "simplexPro.db"
 
@@ -19,3 +21,5 @@ async def init_db():
         async with aiosqlite.connect(DB_PATH) as db:
             await db.executescript(sql)
             await db.commit()
+
+DbDep = Annotated[aiosqlite.Connection, Depends(get_db)]
