@@ -14,7 +14,7 @@ from app.schemas.problema import (
     ResumenProblema, 
     ProblemaPLBase
 )
-import crud
+from app.db import crud
 from app.services.exportador import generar_pdf_grafico
 
 @asynccontextmanager
