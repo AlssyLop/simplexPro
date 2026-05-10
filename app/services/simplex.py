@@ -1,14 +1,15 @@
 import numpy as np
+from app.schemas.simplex_model import ProblemaPL, Iteracion
 
-def metodoSimplex(problemaPL):
+def metodoSimplex(problemaPL:ProblemaPL):
     """
     Método iterativo para resolver modelos de programación lineal (Simplex / Dos Fases o Gran M).
     Se usa Pandas para mostrar la tabla iterativa con formato ASCII.
     """
-    vars_nombres = problemaPL["variables"]
-    restricciones = problemaPL["restricciones"]
-    fo = problemaPL["funcion_objetivo"]
-    tipo_opt = fo["tipo"].lower()
+    vars_nombres = problemaPL.variables
+    restricciones = problemaPL.restricciones
+    fo = problemaPL.funcion_objetivo
+    tipo_opt = fo.tipo.lower()
 
     vars_keys = list(vars_nombres.keys())
     num_vars = len(vars_keys)
@@ -19,12 +20,12 @@ def metodoSimplex(problemaPL):
     M = 1e7  # Gran M para penalizar artificiales
 
     for i, r in enumerate(restricciones):
-        if r["signo"] == "<=":
+        if r.signo == "<=":
             holguras.append(f"S{i+1}")
-        elif r["signo"] == ">=":
+        elif r.signo == ">=":
             holguras.append(f"E{i+1}")
             artificiales.append(f"A{i+1}")
-        elif r["signo"] == "=":
+        elif r.signo == "=":
             artificiales.append(f"A{i+1}")
 
     cols = vars_keys + holguras + artificiales + ["R"]
@@ -47,14 +48,14 @@ def metodoSimplex(problemaPL):
         for j, vk in enumerate(vars_keys):
             tabla[i, j] = r.get(vk, 0)
 
-        tabla[i, -1] = r["valor"]
+        tabla[i, -1] = r.valor
 
-        if r["signo"] == "<=":
+        if r.signo == "<=":
             tabla[i, num_vars + h_idx] = 1
             base.append(holguras[h_idx])
             cb.append(0)
             h_idx += 1
-        elif r["signo"] == ">=":
+        elif r.signo == ">=":
             tabla[i, num_vars + h_idx] = -1
             a_col = num_vars + len(holguras) + a_idx
             tabla[i, a_col] = 1
@@ -69,7 +70,7 @@ def metodoSimplex(problemaPL):
                 tabla[z_row, :] += M * tabla[i, :]
             h_idx += 1
             a_idx += 1
-        elif r["signo"] == "=":
+        elif r.signo == "=":
             a_col = num_vars + len(holguras) + a_idx
             tabla[i, a_col] = 1
             base.append(artificiales[a_idx])
@@ -109,13 +110,14 @@ def metodoSimplex(problemaPL):
     resultado = {}
 
     def guardar_iteracion(entra,sale,pivote,razon_minima):
-        iteracion = {
-            "entra": entra,
-            "sale": sale,
-            "elemento_pivote": pivote,
-            "razon_minima": razon_minima,
-            "tabla": tabla_ant,
-        }
+        iteracion = Iteracion(
+            iteracion=len(iteraciones) + 1,
+            entra=entra,
+            sale=sale,
+            razonMinima=razon_minima,
+            elementoPivote=pivote,
+            tabla=tabla_ant,
+        )
         iteraciones.append(iteracion)
 
     while True:
@@ -174,7 +176,6 @@ def metodoSimplex(problemaPL):
     if tipo_opt == "min":
         z_val = -z_val
 
-    solucion = {}
     vars_optimas = ""
     valorFo = f"Z = "
     for vk in vars_keys:
@@ -182,15 +183,15 @@ def metodoSimplex(problemaPL):
         valorFo += f"{fmt(val)}{vk} + "
         if fmt(val) != 0:
             vars_optimas += f"{fmt(val):,} {vars_nombres[vk]}, "
-    solucion["valor_fo"] = f"{valorFo.strip().rstrip('+').strip()} = {fmt(z_val):,}"
+    resultado["valor_fo"] = f"{valorFo.strip().rstrip('+').strip()} = {fmt(z_val):,}"
     vars_optimas = vars_optimas.strip().rstrip(',').strip()
     #Crear mensaje general para cualquier problema: 
     if vars_optimas == "":
-        solucion["mensaje"] = (
+        resultado["mensaje"] = (
             f"El {tipo_opt.upper()} óptimo es: {fmt(z_val):,}"
         )
     else:
-        solucion["mensaje"] = (
+        resultado["mensaje"] = (
             f"La solución óptima es: {vars_optimas} con la que se obtiene un {tipo_opt.upper()} de {fmt(z_val):,}"
         )
     funcion_objetivo = f"{tipo_opt.upper()} Z = "
@@ -199,5 +200,4 @@ def metodoSimplex(problemaPL):
             funcion_objetivo += f"{value}{key} + "
     
     resultado["funcion_objetivo"] = funcion_objetivo.strip().rstrip('+').strip()
-    resultado["solucion_optima"] = solucion
     return resultado

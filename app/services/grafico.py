@@ -4,20 +4,21 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import base64
+from app.schemas.grafico_model import ProblemaPL, Restriccion
 
-def metodoGrafico(problemaPL):
+def metodoGrafico(problemaPL:ProblemaPL):
     """
     Metodo grafico para resolver problemas de Programación Lineal de 2 variables.
     """
-    vars_nombres = problemaPL["variables"]
-    restricciones = problemaPL["restricciones"]
-    fo = problemaPL["funcion_objetivo"]
-    tipo_opt = fo["tipo"].lower()
+    vars_nombres = problemaPL.variables
+    restricciones = problemaPL.restricciones
+    fo = problemaPL.funcion_objetivo
+    tipo_opt = fo.tipo.lower()
 
-    def interseccion(r1, r2):
+    def interseccion(r1:Restriccion, r2:Restriccion):
         """Resuelve el sistema de ecuaciones entre dos rectas."""
-        a = np.array([[r1['x'], r1['y']], [r2['x'], r2['y']]])
-        b = np.array([r1['valor'], r2['valor']])
+        a = np.array([[r1.x, r1.y], [r2.x, r2.y]])
+        b = np.array([r1.valor, r2.valor])
         try:
             return np.linalg.solve(a, b)
         except np.linalg.LinAlgError:
@@ -27,9 +28,9 @@ def metodoGrafico(problemaPL):
         x, y = p 
         margen = 1e-8
         for r in lista:
-            val = r['x']*x + r['y']*y
-            if r['signo'] == "<=" and val > r['valor'] + margen: return False
-            if r['signo'] == ">=" and val < r['valor'] - margen: return False
+            val = r.x*x + r.y*y
+            if r.signo == "<=" and val > r.valor + margen: return False
+            if r.signo == ">=" and val < r.valor - margen: return False
         return True
 
     # --- PASO 2: Hallar Vértices de la Región Factible ---
@@ -53,7 +54,7 @@ def metodoGrafico(problemaPL):
             v[0] = round(v[0])
         if v[1] % 1 != 0:
             v[1] = round(v[1])
-        z = fo['x']*v[0] + fo['y']*v[1]
+        z = fo.x*v[0] + fo.y*v[1]
         resultados.append({'p': v, 'z': z})
 
     # Buscar el óptimo según sea MAX o MIN
@@ -73,12 +74,12 @@ def metodoGrafico(problemaPL):
 
     # Dibujar líneas de restricciones
     for i, res in enumerate(restricciones):
-        etiqueta = f"R{i+1}: {res['x']}x + {res['y']}y {res['signo']} {res['valor']}"
-        if res['y'] != 0:
-            y_r = (res['valor'] - res['x']*x_rango) / res['y']
+        etiqueta = f"R{i+1}: {res.x}x + {res.y}y {res.signo} {res.valor}"
+        if res.y != 0:
+            y_r = (res.valor - res.x*x_rango) / res.y
             plt.plot(x_rango, y_r, label=etiqueta, linewidth=2)
         else:
-            plt.axvline(res['valor']/res['x'], label=etiqueta, linewidth=2)
+            plt.axvline(res.valor/res.x, label=etiqueta, linewidth=2)
 
     # Dibujar Región Factible (Polígono)
     if len(puntos_v) >= 3:
@@ -106,21 +107,21 @@ def metodoGrafico(problemaPL):
     plt.grid(True, linestyle=':', alpha=0.6)
     plt.xlim(-0.5, max_x)
     plt.ylim(-0.5, max_y)
-    plt.xlabel(vars_nombres['x'])
-    plt.ylabel(vars_nombres['y'])
-    plt.title(f"Método Gráfico - Optimización {tipo_opt.upper()} Z = {fo['x']}x + {fo['y']}y", fontsize=14)
+    plt.xlabel(vars_nombres.x)
+    plt.ylabel(vars_nombres.y)
+    plt.title(f"Método Gráfico - Optimización {tipo_opt.upper()} Z = {fo.x}x + {fo.y}y", fontsize=14)
     plt.legend(loc='upper right', fontsize=9)
 
     # Guardar resultados
     resultado = {"valores_fo":[]}
-    resultado['funcion_objetivo'] = f"{fo['x']}x + {fo['y']}y"
+    resultado['funcion_objetivo'] = f"{fo.x}x + {fo.y}y"
     tipo = ""
     for i, rv in enumerate(resultados):
         if rv['z'] == optimo['z']:
             tipo = tipo_opt.upper()
         else:
             tipo = ""
-        resultado['valores_fo'].append(f"f({rv['p'][0]:.0f}, {rv['p'][1]:.0f}) = {fo['x']}*({rv['p'][0]:.0f}) + {fo['y']}*({rv['p'][1]:.0f}) = {rv['z']:,.2f} " + tipo)                  
+        resultado['valores_fo'].append(f"f({rv['p'][0]:.0f}, {rv['p'][1]:.0f}) = {fo.x}*({rv['p'][0]:.0f}) + {fo.y}*({rv['p'][1]:.0f}) = {rv['z']:,.2f} " + tipo)                  
     resultado['mensaje'] = f"La solución óptima es: {optimo['p'][0]:,.0f} {vars_nombres['x']} y {optimo['p'][1]:,.0f} {vars_nombres['y']} con la que se obtiene un {tipo_opt.upper()} de {optimo['z']:,.2f}"
     
     #convertir la imagen a base64
