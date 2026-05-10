@@ -33,31 +33,31 @@ CREATE TABLE metodoGrafico (
 CREATE TABLE metodoSimple (
     metodoSimpleID TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-a' || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
     problemaID TEXT NOT NULL,
-    iteraciones TEXT,
     valorFo TEXT,
     mensaje TEXT,
     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (problemaID) REFERENCES problemaPL(problemaID) ON DELETE CASCADE
 );
 
+CREATE TABLE iteracionSimple (
+    iteracionID INTEGER PRIMARY KEY AUTOINCREMENT,
+    metodoSimpleID TEXT NOT NULL,
+    iteracion INT NOT NULL,
+    entra TEXT,
+    sale TEXT,
+    razonMinima REAL,
+    elementoPivote REAL,
+    tabla TEXT,
+    fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (metodoSimpleID) REFERENCES metodoSimple(metodoSimpleID) ON DELETE CASCADE
+);
+
 -- Tabla para almacenar las restricciones
 CREATE TABLE restricciones (
     restriccionID TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-a' || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
     problemaID TEXT NOT NULL,
-    constante REAL NOT NULL,
-    operador TEXT NOT NULL,
+    inecuacion  TEXT NOT NULL,
     glosa TEXT,
     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (problemaID) REFERENCES problemaPL(problemaID) ON DELETE CASCADE
-);
-
--- Tabla para almacenar los términos de las restricciones
-CREATE TABLE terminos (
-    terminoID TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-a' || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
-    restriccionID TEXT NOT NULL,
-    variableID TEXT NOT NULL,
-    coeficiente REAL NOT NULL,
-    fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (restriccionID) REFERENCES restricciones(restriccionID) ON DELETE CASCADE,
-    FOREIGN KEY (variableID) REFERENCES variables(variableID) ON DELETE CASCADE
 );
