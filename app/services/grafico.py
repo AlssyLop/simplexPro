@@ -4,14 +4,16 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import base64
-from app.schemas.grafico_model import ProblemaPL, Restriccion
+from app.schemas.grafico_model import ProblemaPL, Restriccion, Resultado
 
-def metodoGrafico(problemaPL:ProblemaPL):
+def metodoGrafico(problemaPL:ProblemaPL) -> Resultado:
     """
     Metodo grafico para resolver problemas de Programación Lineal de 2 variables.
     """
     vars_nombres = problemaPL.variables
-    restricciones = problemaPL.restricciones
+    restricciones = problemaPL.restricciones.copy()
+    restricciones.append(Restriccion(x=1, y=0, signo=">=", valor=0))
+    restricciones.append(Restriccion(x=0, y=1, signo=">=", valor=0))
     fo = problemaPL.funcion_objetivo
     tipo_opt = fo.tipo.lower()
 
@@ -43,19 +45,24 @@ def metodoGrafico(problemaPL:ProblemaPL):
                 if not any(np.allclose(p, v) for v in puntos_v):
                     puntos_v.append(p)
 
+    def _fmt_num(n):
+        return str(int(n)) if isinstance(n, float) and n == int(n) else str(n)
+
     if not puntos_v:
-        return {"Error": "No se encontró una región factible."}
+        return Resultado(
+            valoresFO=[],
+            funcion_objetivo=f"{_fmt_num(fo.x)}x + {_fmt_num(fo.y)}y",
+            mensaje="No se encontró una región factible.",
+            grafico=""
+        )
 
     # --- PASO 3: Evaluación de la Función Objetivo ---
     resultados = []
     for v in puntos_v:
-        # Validar si son enteros y redondear si no lo son
-        if v[0] % 1 != 0: 
-            v[0] = round(v[0])
-        if v[1] % 1 != 0:
-            v[1] = round(v[1])
-        z = fo.x*v[0] + fo.y*v[1]
-        resultados.append({'p': v, 'z': z})
+        px = round(v[0]) if v[0] % 1 != 0 else v[0]
+        py = round(v[1]) if v[1] % 1 != 0 else v[1]
+        z = fo.x*px + fo.y*py
+        resultados.append({'p': np.array([px, py]), 'z': z})
 
     # Buscar el óptimo según sea MAX o MIN
     if tipo_opt == "max":
@@ -113,22 +120,25 @@ def metodoGrafico(problemaPL:ProblemaPL):
     plt.legend(loc='upper right', fontsize=9)
 
     # Guardar resultados
-    resultado = {"valores_fo":[]}
-    resultado['funcion_objetivo'] = f"{fo.x}x + {fo.y}y"
-    tipo = ""
+    resultado = Resultado(
+        valoresFO = [],
+        funcion_objetivo = f"{_fmt_num(fo.x)}x + {_fmt_num(fo.y)}y",
+        mensaje = "",
+        grafico = ""
+    )
     for i, rv in enumerate(resultados):
+        tipo = ""
         if rv['z'] == optimo['z']:
-            tipo = tipo_opt.upper()
-        else:
-            tipo = ""
-        resultado['valores_fo'].append(f"f({rv['p'][0]:.0f}, {rv['p'][1]:.0f}) = {fo.x}*({rv['p'][0]:.0f}) + {fo.y}*({rv['p'][1]:.0f}) = {rv['z']:,.2f} " + tipo)                  
-    resultado['mensaje'] = f"La solución óptima es: {optimo['p'][0]:,.0f} {vars_nombres['x']} y {optimo['p'][1]:,.0f} {vars_nombres['y']} con la que se obtiene un {tipo_opt.upper()} de {optimo['z']:,.2f}"
+            tipo = f" ({tipo_opt.upper()})"
+        resultado.valoresFO.append(f"f({rv['p'][0]:.0f}, {rv['p'][1]:.0f}) = {_fmt_num(fo.x)}·({rv['p'][0]:.0f}) + {_fmt_num(fo.y)}·({rv['p'][1]:.0f}) = {rv['z']:,.2f}{tipo}")
+    tipo_texto = "máximo" if tipo_opt == "max" else "mínimo"
+    resultado.mensaje = f"La solución óptima es {optimo['p'][0]:,.0f} {vars_nombres.x} y {optimo['p'][1]:,.0f} {vars_nombres.y}, con un valor {tipo_texto} de Z = {optimo['z']:,.2f}"
     
     #convertir la imagen a base64
     buf = io.BytesIO()
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     buf.seek(0)
-    resultado['img'] = base64.b64encode(buf.getvalue()).decode('utf-8')
+    resultado.grafico = base64.b64encode(buf.getvalue()).decode('utf-8')
     
     return resultado
