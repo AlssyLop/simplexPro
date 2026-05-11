@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.db.connection import init_db
-from app.routes import resolver, problemas, utilidad
+from app.routes import problemas, utilidad
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -13,6 +13,5 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="SimplexPro API", lifespan=lifespan)
 
 # Registrar routers
-app.include_router(resolver.router)
 app.include_router(problemas.router)
 app.include_router(utilidad.router)

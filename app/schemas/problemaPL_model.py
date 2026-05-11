@@ -13,8 +13,9 @@ class FuncionObjetivo(SignoValor):
     tipo: str
 
 class ResumenProblema(ProblemaPL):
-    id: str
-    fecha_creacion: str
+    id:str
+    tipoOptimizacion: str
+    fechaCreacion: str
 
 class Resultado(BaseModel):
     funcion_objetivo: str

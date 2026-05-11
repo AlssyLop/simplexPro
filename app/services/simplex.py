@@ -1,7 +1,7 @@
 import numpy as np
 from app.schemas.simplex_model import ProblemaPL, Iteracion
 
-def metodoSimplex(problemaPL:ProblemaPL):
+def metodoSimplex(problemaPL: ProblemaPL):
     """
     Método iterativo para resolver modelos de programación lineal (Simplex / Dos Fases o Gran M).
     Se usa Pandas para mostrar la tabla iterativa con formato ASCII.
@@ -20,12 +20,13 @@ def metodoSimplex(problemaPL:ProblemaPL):
     M = 1e7  # Gran M para penalizar artificiales
 
     for i, r in enumerate(restricciones):
-        if r.signo == "<=":
+        signo = r.signo
+        if signo == "<=":
             holguras.append(f"S{i+1}")
-        elif r.signo == ">=":
+        elif signo == ">=":
             holguras.append(f"E{i+1}")
             artificiales.append(f"A{i+1}")
-        elif r.signo == "=":
+        elif signo == "=":
             artificiales.append(f"A{i+1}")
 
     cols = vars_keys + holguras + artificiales + ["R"]
@@ -36,7 +37,7 @@ def metodoSimplex(problemaPL:ProblemaPL):
 
     # Fila Z inicial
     for j, vk in enumerate(vars_keys):
-        val = fo.get(vk, 0)
+        val = fo.variables.get(vk, 0) if hasattr(fo, 'variables') else getattr(fo, vk, 0)
         tabla[z_row, j] = -val if tipo_opt == "max" else val
 
     base = []
@@ -46,16 +47,17 @@ def metodoSimplex(problemaPL:ProblemaPL):
     a_idx = 0
     for i, r in enumerate(restricciones):
         for j, vk in enumerate(vars_keys):
-            tabla[i, j] = r.get(vk, 0)
+            tabla[i, j] = r.variables.get(vk, 0) if hasattr(r, 'variables') else getattr(r, vk, 0)
 
         tabla[i, -1] = r.valor
 
-        if r.signo == "<=":
+        signo = r.signo
+        if signo == "<=":
             tabla[i, num_vars + h_idx] = 1
             base.append(holguras[h_idx])
             cb.append(0)
             h_idx += 1
-        elif r.signo == ">=":
+        elif signo == ">=":
             tabla[i, num_vars + h_idx] = -1
             a_col = num_vars + len(holguras) + a_idx
             tabla[i, a_col] = 1
@@ -70,7 +72,7 @@ def metodoSimplex(problemaPL:ProblemaPL):
                 tabla[z_row, :] += M * tabla[i, :]
             h_idx += 1
             a_idx += 1
-        elif r.signo == "=":
+        elif signo == "=":
             a_col = num_vars + len(holguras) + a_idx
             tabla[i, a_col] = 1
             base.append(artificiales[a_idx])

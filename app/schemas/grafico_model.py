@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Dict, List, Optional
-from ..schemas.problemaPL_model import ProblemaPL, FuncionObjetivo, SignoValor, Resultado
+from ..schemas.problemaPL_model import ProblemaPL, FuncionObjetivo, ResumenProblema, SignoValor, Resultado
 
 class Variables(BaseModel):
     x: str
@@ -11,9 +11,10 @@ class Restriccion(SignoValor):
     y: float
     glosa: Optional[str] = None
 
-class FuncionObjetivo(FuncionObjetivo):
+class FuncionObjetivo(BaseModel):
     x: float
     y: float
+    tipo: str
     
 class ProblemaPL(ProblemaPL):
     variables: Variables
@@ -21,5 +22,13 @@ class ProblemaPL(ProblemaPL):
     funcion_objetivo: FuncionObjetivo
 
 class Resultado(Resultado):
-    valores_fo: List[str]
-    img: str
+    valoresFO: List[str]
+    grafico: str
+
+class Inecuacion(BaseModel):
+    inecuacion: str
+    glosa: Optional[str] = None
+
+class MostrarResultadoGrafico(ResumenProblema, Resultado):
+    variables: Variables
+    restricciones: List[Inecuacion]
