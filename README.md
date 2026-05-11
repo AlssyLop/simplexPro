@@ -1,16 +1,15 @@
 # SimplexPro
 
-**SimplexPro** es una herramienta en Python para resolver problemas de **Programación Lineal** mediante el **Método Gráfico** (2 variables) y el **Método Simplex/Gran M** (N variables). Expone una API REST con FastAPI, persistencia en SQLite y generación de reportes PDF.
+**SimplexPro** es un servicio web con API REST desarrollado en Python, especializado en la resolución de problemas de **Programación Lineal** mediante el **Método Gráfico** (2 variables) y el **Método Simplex/Gran M** (N variables).
 
 ---
 
 ## Características
 
-- **API REST con FastAPI**: Endpoints CRUD + resolución unificada vía query param.
+- **API REST con FastAPI**: Endpoints CRUD para problemas de programación lineal + resolución unificada.
 - **Método Gráfico**: Encuentra vértices de la región factible, incluye restricciones de no-negatividad (`x ≥ 0`, `y ≥ 0`), gráfico matplotlib en base64 y exportación a PDF.
 - **Método Simplex / Gran M**: Soporta maximización/minimización, restricciones `<=`, `>=`, `=`, variables artificiales con penalización Big-M, y retorna todas las iteraciones (tabla, pivote, entrada/salida).
-- **Validación con Pydantic V2**: Esquemas tipados con validación automática.
-- **Persistencia**: SQLite asíncrona (`aiosqlite`) con `RETURNING` para atomicidad.
+- **Persistencia**: SQLite asíncrona (`aiosqlite`).
 - **PDF**: Reportes con fpdf2 (solución, vértices evaluados, gráfico).
 
 ---
@@ -73,26 +72,61 @@ Documentación Swagger: `http://localhost:8000/docs`.
 
 ---
 
-## Endpoints de la API
+## Endpoints de Problemas (`/problema`)
 
-### Gestión y Resolución (`/problema`)
+### 1. Listar Problemas
+- **Ruta**: `GET /problema/listar`
+- **Query Params**: `page` (opcional, default: 1).
+- **Descripción**: Obtiene una lista paginada de los problemas registrados.
+- **Respuesta (200 OK)**: Lista de `ResumenProblema`.
+  ```json
+  [
+    {
+      "id": "uuid",
+      "titulo": "Nombre del problema",
+      "descripcion": "Opcional",
+      "tipoOptimizacion": "max/min",
+      "fechaCreacion": "YYYY-MM-DD HH:MM:SS"
+    }
+  ]
+  ```
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `POST` | `/problema/registrar?metodo=grafico\|simplex` | Registra un problema y lo resuelve |
-| `PUT` | `/problema/actualizar?metodo=grafico\|simplex` | Actualiza un problema existente y lo resuelve |
-| `GET` | `/problema/listar?page=1` | Lista problemas (10 por página) |
-| `GET` | `/problema/solucion/grafica/{id}` | Obtiene solución gráfica guardada |
-| `GET` | `/problema/solucion/simplex/{id}` | Obtiene solución simplex guardada |
-| `DELETE` | `/problema/eliminar/{id}` | Elimina un problema |
+### 2. Obtener Solución Gráfica
+- **Ruta**: `GET /problema/solucion/grafica/{id}`
+- **Descripción**: Recupera los detalles y la solución de un problema resuelto por el método gráfico.
+- **Respuesta (200 OK)**: `MostrarResultadoGrafico`.
+  - Incluye variables, restricciones (como inecuaciones), valores de la FO y el gráfico en base64.
+- **Errores**: 404 si el problema no existe.
 
-### Utilidad
+### 3. Obtener Solución Simplex
+- **Ruta**: `GET /problema/solucion/simplex/{id}`
+- **Descripción**: Recupera los detalles y la solución paso a paso de un problema resuelto por el método simplex.
+- **Respuesta (200 OK)**: `MostrarResultadoSimplex`.
+  - Incluye variables, restricciones, valor final de la FO y la lista de iteraciones (tablas simplex).
+- **Errores**: 404 si el problema no existe.
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/problemas/{id}/exportar` | Exporta PDF con solución gráfica |
+### 4. Registrar Problema
+- **Ruta**: `POST /problema/registrar`
+- **Query Params**: `metodo` (obligatorio: "grafico" o "simplex").
+- **Cuerpo (JSON)**:
+  - Para `grafico`: Requiere `x`, `y` en variables, restricciones y FO.
+  - Para `simplex`: Requiere variables tipo `x1`, `x2`, ..., `xn`.
+- **Flujo**:
+  1. Valida la estructura según el método.
+  2. Ejecuta el servicio correspondiente (`metodoGrafico` o `metodoSimplex`).
+  3. Persiste el problema y el resultado en la base de datos.
+- **Respuesta (201 Created)**: `{"mensaje": "Problema guardado"}`.
 
----
+### 5. Actualizar Problema
+- **Ruta**: `PUT /problema/actualizar`
+- **Query Params**: `metodo` ("grafico" o "simplex").
+- **Cuerpo (JSON)**: Similar al registro, pero debe incluir `problemaID` o `id`.
+- **Respuesta (200 OK)**: `{"mensaje": "Problema actualizado"}`.
+
+### 6. Eliminar Problema
+- **Ruta**: `DELETE /problema/eliminar/{id}`
+- **Respuesta (200 OK)**: `{"mensaje": "Problema eliminado"}`.
+- **Errores**: 404 si no existe.
 
 ## Ejemplos de Uso
 
@@ -127,6 +161,26 @@ POST /problema/registrar?metodo=simplex
     "funcion_objetivo": { "x1": 30, "x2": 20, "x3": 50, "tipo": "max" }
 }
 ```
+
+---
+
+## Endpoints de Utilidad
+
+### 1. Exportar a PDF
+- **Ruta**: `GET /problemas/{id}/exportar`
+- **Descripción**: Genera y descarga un reporte PDF del problema (actualmente enfocado en el método gráfico).
+- **Respuesta (200 OK)**: Archivo binario `application/pdf`.
+
+---
+
+## Validaciones y Errores Comunes
+- **400 Bad Request**: 
+  - Falta de campos obligatorios (`titulo`, `variables`, `restricciones`, `funcion_objetivo`).
+  - Formato incorrecto de variables (ej. para simplex deben ser `x1, x2...`).
+  - Signos inválidos (Grafico: `<=, >=`; Simplex: `<=, >=, =`).
+  - Tipo de optimización no es `max` o `min`.
+- **422 Unprocessable Entity**: Error automático de FastAPI cuando el JSON no cumple con el esquema Pydantic.
+- **404 Not Found**: ID de problema no existe en la base de datos.
 
 ---
 
