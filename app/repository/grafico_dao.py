@@ -30,6 +30,7 @@ async def guardar_resultado_grafico(db: aiosqlite.Connection, p: ProblemaPL, res
         (problema_id, valores_fo, mensaje, grafico_bytes)
     )
     await db.commit()
+    return problema_id
     
 
 

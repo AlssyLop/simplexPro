@@ -25,6 +25,7 @@ async def guardar_resultado_simplex(db: aiosqlite.Connection, p: ProblemaPL, res
     iteraciones = [(metodo_simple_id, i.iteracion, i.entra, i.sale, i.elementoPivote, i.razonMinima, json.dumps(i.tabla)) for i in resultado.iteraciones]
     await db.executemany("INSERT INTO iteracionSimple (metodoSimpleID, iteracion, entra, sale, elementoPivote, razonMinima, tabla) VALUES (?, ?, ?, ?, ?, ?, ?)", iteraciones)
     await db.commit()
+    return problema_id
 
 def inecuacion(restr):
     inecuacion = ""

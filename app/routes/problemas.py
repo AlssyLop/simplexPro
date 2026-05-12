@@ -40,16 +40,16 @@ async def registrar(metodo: str, problema: dict, db: DbDep):
         validar_problema_grafico(problema)
         p = ProblemaGrafico(**problema)
         res = metodoGrafico(p)
-        await guardar_resultado_grafico(db, p, res)
+        id = await guardar_resultado_grafico(db, p, res)
     elif metodo == "simplex":
         validar_problema_simplex(problema)
         p = ProblemaSimplex(**problema)
         res_dict = metodoSimplex(p)
         res = ResultadoSimplex(**res_dict)
-        await guardar_resultado_simplex(db, p, res)
+        id = await guardar_resultado_simplex(db, p, res)
     else:
         raise HTTPException(status_code=400, detail="Metodo no valido")
-    return {"mensaje": "Problema guardado"}
+    return {"id": id}
 
 @router.put("/actualizar", response_model=dict, status_code=status.HTTP_200_OK)
 async def actualizar(metodo: str, problema: dict, db: DbDep):
