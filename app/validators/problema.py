@@ -3,7 +3,7 @@ import re
 # from app.schemas.grafico_model import ProblemaPL as ProblemaGrafico
 # from app.schemas.simplex_model import ProblemaPL as ProblemaSimplex
 
-SIGNOS_GRAFICO = {"<=", ">="}
+SIGNOS_GRAFICO = {"=", "<=", ">="}
 SIGNOS_SIMPLEX = {"<=", ">=", "="}
 TIPOS_OPT = {"max", "min"}
 
@@ -45,7 +45,7 @@ def validar_problema_grafico(problema: dict):
         raise HTTPException(status_code=400, detail="restricciones es requerido")
     else:
         for idx, r in enumerate(restricciones):
-            prefijo = f"Restricción [{idx}]"
+            prefijo = f"la restricción ({idx + 1})"
             if not isinstance(r, dict):
                 raise HTTPException(status_code=400, detail=f"{prefijo}: no es valido")
             for var in ("x", "y"):
@@ -56,7 +56,7 @@ def validar_problema_grafico(problema: dict):
             if "signo" not in r:
                 raise HTTPException(status_code=400, detail=f"{prefijo}: falta signo")
             elif r["signo"] not in SIGNOS_GRAFICO:
-                raise HTTPException(status_code=400, detail=f"{prefijo}: signo no es valido")
+                raise HTTPException(status_code=400, detail=f"El signo de {prefijo} no es valido")
             if "valor" not in r:
                 raise HTTPException(status_code=400, detail=f"{prefijo}: falta 'valor'")
             elif not _es_numero(r["valor"]):

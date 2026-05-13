@@ -6,18 +6,25 @@ import matplotlib.pyplot as plt
 import base64
 from app.schemas.grafico_model import ProblemaPL, Restriccion, Resultado
 
-def metodoGrafico(problemaPL:ProblemaPL) -> Resultado:
+def metodoGrafico(problemaPL: ProblemaPL) -> Resultado:
     """
     Metodo grafico para resolver problemas de Programación Lineal de 2 variables.
     """
     vars_nombres = problemaPL.variables
     restricciones = problemaPL.restricciones.copy()
+    
+    # Restricciones de no negatividad
     restricciones.append(Restriccion(x=1, y=0, signo=">=", valor=0))
     restricciones.append(Restriccion(x=0, y=1, signo=">=", valor=0))
+    
     fo = problemaPL.funcion_objetivo
     tipo_opt = fo.tipo.lower()
 
-    def interseccion(r1:Restriccion, r2:Restriccion):
+    def _fmt_num(n):
+        """Formatea números para no mostrar decimales innecesarios."""
+        return str(int(n)) if isinstance(n, (float, int)) and int(n) == n else str(round(n, 2))
+
+    def interseccion(r1: Restriccion, r2: Restriccion):
         """Resuelve el sistema de ecuaciones entre dos rectas."""
         a = np.array([[r1.x, r1.y], [r2.x, r2.y]])
         b = np.array([r1.valor, r2.valor])
@@ -26,13 +33,15 @@ def metodoGrafico(problemaPL:ProblemaPL) -> Resultado:
         except np.linalg.LinAlgError:
             return None
 
-    def es_factible(p, lista):
-        x, y = p 
-        margen = 1e-8
-        for r in lista:
-            val = r.x*x + r.y*y
+    def es_factible(p, lista_res):
+        """Filtro CRUCIAL: Verifica que el punto satisfaga TODAS las restricciones."""
+        x, y = p
+        margen = 1e-7 # Tolerancia para errores de punto flotante
+        for r in lista_res:
+            val = r.x * x + r.y * y
             if r.signo == "<=" and val > r.valor + margen: return False
             if r.signo == ">=" and val < r.valor - margen: return False
+            if r.signo == "=" and not np.isclose(val, r.valor, atol=margen): return False
         return True
 
     # --- PASO 2: Hallar Vértices de la Región Factible ---
@@ -42,73 +51,109 @@ def metodoGrafico(problemaPL:ProblemaPL) -> Resultado:
         for j in range(i+1, n):
             p = interseccion(restricciones[i], restricciones[j])
             if p is not None and es_factible(p, restricciones):
-                if not any(np.allclose(p, v) for v in puntos_v):
+                # Validar que no esté duplicado
+                if not any(np.allclose(p, v, atol=1e-5) for v in puntos_v):
                     puntos_v.append(p)
 
-    def _fmt_num(n):
-        return str(int(n)) if isinstance(n, float) and n == int(n) else str(n)
-
-    if not puntos_v:
-        return Resultado(
-            valoresFO=[],
-            funcion_objetivo=f"{_fmt_num(fo.x)}x + {_fmt_num(fo.y)}y",
-            mensaje="No se encontró una región factible.",
-            grafico=""
-        )
+    # Preparar el objeto Resultado base
+    resultado = Resultado(
+        valoresFO=[],
+        funcion_objetivo=f"{tipo_opt.upper()} Z = {_fmt_num(fo.x)}x + {_fmt_num(fo.y)}y",
+        mensaje="",
+        grafico=""
+    )
 
     # --- PASO 3: Evaluación de la Función Objetivo ---
     resultados = []
-    for v in puntos_v:
-        px = round(v[0]) if v[0] % 1 != 0 else v[0]
-        py = round(v[1]) if v[1] % 1 != 0 else v[1]
-        z = fo.x*px + fo.y*py
-        resultados.append({'p': np.array([px, py]), 'z': z})
+    optimo = None
+    if puntos_v:
+        for v in puntos_v:
+            px, py = v[0], v[1]
+            z = fo.x * px + fo.y * py
+            resultados.append({'p': np.array([px, py]), 'z': z})
 
-    # Buscar el óptimo según sea MAX o MIN
-    if tipo_opt == "max":
-        optimo = max(resultados, key=lambda x: x['z'])
+        # Buscar el óptimo según sea MAX o MIN
+        if tipo_opt == "max":
+            optimo = max(resultados, key=lambda x: x['z'])
+        else:
+            optimo = min(resultados, key=lambda x: x['z'])
+        
+        # Poblar mensajes de éxito en el objeto Resultado
+        for rv in resultados:
+            tipo = f" ({tipo_opt.upper()})" if np.isclose(rv['z'], optimo['z']) else ""
+            resultado.valoresFO.append(
+                f"Z({rv['p'][0]:.2f}, {rv['p'][1]:.2f}) = {_fmt_num(fo.x)}·({rv['p'][0]:.2f}) + {_fmt_num(fo.y)}·({rv['p'][1]:.2f}) = {rv['z']:,.2f}{tipo}"
+            )
+        
+        tipo_texto = "máximo" if tipo_opt == "max" else "mínimo"
+        resultado.mensaje = f"La solución óptima es {_fmt_num(optimo['p'][0])} {vars_nombres.x} y {_fmt_num(optimo['p'][1])} {vars_nombres.y}, con un valor {tipo_texto} de Z = {optimo['z']:,.2f}"
     else:
-        optimo = min(resultados, key=lambda x: x['z'])
+        # Mensaje de incompatibilidad si la lista está vacía
+        resultado.mensaje = "No se encontró una región factible. Las restricciones son incompatibles."
 
     # --- PASO 4: Visualización Gráfica ---
     plt.figure(figsize=(11, 7))
     ax = plt.gca()
     
-    # Límites dinámicos
-    max_x = max([v[0] for v in puntos_v] + [5]) + 2
-    max_y = max([v[1] for v in puntos_v] + [5]) + 2
+    # Límites dinámicos para una buena visualización, incluso si no es factible
+    if puntos_v:
+        max_x = max([v[0] for v in puntos_v] + [10]) * 1.2
+        max_y = max([v[1] for v in puntos_v] + [10]) * 1.2
+    else:
+        cortes = []
+        for r in restricciones:
+            if r.x != 0: cortes.append(r.valor / r.x)
+            if r.y != 0: cortes.append(r.valor / r.y)
+        max_corte = max(cortes) if cortes else 10
+        max_x = max_y = max(max_corte, 10) * 1.2
+
     x_rango = np.linspace(0, max_x, 500)
 
-    # Dibujar líneas de restricciones
-    for i, res in enumerate(restricciones):
-        etiqueta = f"R{i+1}: {res.x}x + {res.y}y {res.signo} {res.valor}"
+    # Dibujar líneas de TODAS las restricciones
+    for i, res in enumerate(restricciones[:-2]): # Excluimos las de no negatividad para no saturar los ejes
+        etiqueta = f"R{i+1}: {_fmt_num(res.x)}x + {_fmt_num(res.y)}y {res.signo} {_fmt_num(res.valor)}"
         if res.y != 0:
-            y_r = (res.valor - res.x*x_rango) / res.y
-            plt.plot(x_rango, y_r, label=etiqueta, linewidth=2)
+            if res.x == 0:
+                plt.axhline(y=res.valor / res.y, label=etiqueta, linewidth=2)
+            else:
+                y_r = (res.valor - res.x * x_rango) / res.y
+                plt.plot(x_rango, y_r, label=etiqueta, linewidth=2)
         else:
-            plt.axvline(res.valor/res.x, label=etiqueta, linewidth=2)
+            plt.axvline(x=res.valor / res.x, label=etiqueta, linewidth=2)
 
-    # Dibujar Región Factible (Polígono)
-    if len(puntos_v) >= 3:
-        # Ordenar vértices para el polígono
-        centro = np.mean(puntos_v, axis=0)
-        puntos_v_ord = sorted(puntos_v, key=lambda p: np.arctan2(p[1]-centro[1], p[0]-centro[0]))
-        poligono = plt.Polygon(puntos_v_ord, color='green', alpha=0.15, label='Región Factible')
-        ax.add_patch(poligono)
+    if puntos_v:
+        # Dibujar Región Factible según la geometría
+        if len(puntos_v) >= 3:
+            # Polígono tradicional (Sombra)
+            centro = np.mean(puntos_v, axis=0)
+            puntos_v_ord = sorted(puntos_v, key=lambda p: np.arctan2(p[1]-centro[1], p[0]-centro[0]))
+            poligono = plt.Polygon(puntos_v_ord, color='green', alpha=0.15, label='Región Factible')
+            ax.add_patch(poligono)
+        elif len(puntos_v) == 2:
+            # Segmento de recta (Común en restricciones con '=')
+            plt.plot([puntos_v[0][0], puntos_v[1][0]], [puntos_v[0][1], puntos_v[1][1]], 
+                     color='green', linewidth=5, alpha=0.5, label='Región Factible (Segmento)')
+        elif len(puntos_v) == 1:
+            # Un solo punto posible
+            plt.plot(puntos_v[0][0], puntos_v[0][1], 'go', markersize=10, alpha=0.5, label='Región Factible (Punto)')
 
-    # Dibujar vértices y etiquetas
-    for res_v in resultados:
-        v = res_v['p']
-        plt.plot(v[0], v[1], 'ko', markersize=4, zorder=4)
-        offset = 0.3
-        plt.text(v[0]+offset, v[1]+offset, f"({v[0]:.1f}, {v[1]:.1f})\nZ={res_v['z']:.2f}", 
-                 fontsize=8, fontweight='bold', bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+        # Dibujar vértices evaluados
+        for res_v in resultados:
+            v = res_v['p']
+            plt.plot(v[0], v[1], 'ko', markersize=5, zorder=4)
+            offset = max_x * 0.015
+            plt.text(v[0]+offset, v[1]+offset, f"({v[0]:.1f}, {v[1]:.1f})\nZ={res_v['z']:,.0f}", 
+                     fontsize=8, fontweight='bold', bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
 
-    # MARCAR EL ÓPTIMO CON ESTRELLA
-    plt.scatter(optimo['p'][0], optimo['p'][1], color='red', marker='*', s=300, 
-                edgecolor='black', label=f'SOLUCIÓN ÓPTIMA (Z={optimo["z"]:.2f})', zorder=10)
+        # MARCAR EL ÓPTIMO
+        plt.scatter(optimo['p'][0], optimo['p'][1], color='red', marker='*', s=350, 
+                    edgecolor='black', label=f'SOLUCIÓN ÓPTIMA', zorder=10)
+    else:
+        # Marca de agua si las restricciones son incompatibles (No sombrea nada)
+        plt.text(max_x/2, max_y/2, 'SIN REGIÓN FACTIBLE\n(Restricciones incompatibles)', 
+                 fontsize=20, color='red', alpha=0.4, ha='center', va='center', fontweight='bold', rotation=30)
 
-    # Configuración de ejes
+    # Configuración de ejes y estética
     plt.axhline(0, color='black', linewidth=1.5, zorder=3)
     plt.axvline(0, color='black', linewidth=1.5, zorder=3)
     plt.grid(True, linestyle=':', alpha=0.6)
@@ -116,25 +161,10 @@ def metodoGrafico(problemaPL:ProblemaPL) -> Resultado:
     plt.ylim(-0.5, max_y)
     plt.xlabel(vars_nombres.x)
     plt.ylabel(vars_nombres.y)
-    plt.title(f"Método Gráfico - Optimización {tipo_opt.upper()} Z = {fo.x}x + {fo.y}y", fontsize=14)
+    plt.title(f"Método Gráfico - Optimización {tipo_opt.upper()}", fontsize=14)
     plt.legend(loc='upper right', fontsize=9)
 
-    # Guardar resultados
-    resultado = Resultado(
-        valoresFO = [],
-        funcion_objetivo = f"{_fmt_num(fo.x)}x + {_fmt_num(fo.y)}y",
-        mensaje = "",
-        grafico = ""
-    )
-    for i, rv in enumerate(resultados):
-        tipo = ""
-        if rv['z'] == optimo['z']:
-            tipo = f" ({tipo_opt.upper()})"
-        resultado.valoresFO.append(f"f({rv['p'][0]:.0f}, {rv['p'][1]:.0f}) = {_fmt_num(fo.x)}·({rv['p'][0]:.0f}) + {_fmt_num(fo.y)}·({rv['p'][1]:.0f}) = {rv['z']:,.2f}{tipo}")
-    tipo_texto = "máximo" if tipo_opt == "max" else "mínimo"
-    resultado.mensaje = f"La solución óptima es {optimo['p'][0]:,.0f} {vars_nombres.x} y {optimo['p'][1]:,.0f} {vars_nombres.y}, con un valor {tipo_texto} de Z = {optimo['z']:,.2f}"
-    
-    #convertir la imagen a base64
+    # Convertir gráfico a Base64 para retornar
     buf = io.BytesIO()
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
