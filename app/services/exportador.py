@@ -20,7 +20,7 @@ def generar_pdf_grafico(resultado: MostrarResultadoGrafico) -> bytes:
     pdf = PDFReport()
     pdf.add_page()
     pdf.set_font("helvetica", size=12)
-
+   
     # Título y Descripción
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, f"Problema: {resultado.titulo}", ln=1)
@@ -41,9 +41,9 @@ def generar_pdf_grafico(resultado: MostrarResultadoGrafico) -> bytes:
     pdf.cell(0, 10, "Restricciones:", ln=1)
     pdf.set_font("helvetica", size=12)
     for r in resultado.restricciones:
-        pdf.multi_cell(0, 6, f"{r.inecuacion}\n({r.glosa})")
+        pdf.cell(0, 6, f"{r.inecuacion} - {r.glosa}", ln=1)
     pdf.ln(5)
-
+    
     # --- Nueva página: Solución y Gráfico ---
     pdf.add_page()
     pdf.set_font("helvetica", "B", 14)
@@ -62,7 +62,6 @@ def generar_pdf_grafico(resultado: MostrarResultadoGrafico) -> bytes:
         for v in resultado.valoresFO:
             pdf.cell(0, 7, f"  {v}", ln=1)
         pdf.ln(5)
-
     # Insertar imagen
     if resultado.grafico:
         try:
