@@ -3,11 +3,16 @@ import json
 import base64
 from typing import Optional
 from app.schemas.grafico_model import ProblemaPL, Resultado, MostrarResultadoGrafico
-from app.repository.problemaPL_dao import registrar_problema, registrar_variables, registrar_restricciones
+from app.repository.problemaPL_dao import registrar_problema, registrar_variables, registrar_restricciones, actualizar_problema
 
 async def guardar_resultado_grafico(db: aiosqlite.Connection, p: ProblemaPL, resultado: Resultado):
 
-    problemaPL = (p.titulo, p.descripcion, p.funcion_objetivo.tipo.upper(), resultado.funcion_objetivo)
+    problemaPL = (
+        p.titulo, 
+        p.descripcion, 
+        p.funcion_objetivo.tipo.upper(), 
+        resultado.funcion_objetivo
+        )
     problema_id = await registrar_problema(db, problemaPL)
     
     variables = [(var_key, var_nombre, problema_id) for var_key, var_nombre in p.variables.model_dump().items()]
@@ -75,7 +80,19 @@ async def mostrar_resultado_grafico(db: aiosqlite.Connection, id: str) -> Option
     return None
 
  
-async def actualizar_resultado_grafico(db: aiosqlite.Connection, problema_id: str, resultado: Resultado):
+async def actualizar_resultado_grafico(db: aiosqlite.Connection, problema_id: str, p: ProblemaPL, resultado: Resultado):
+    """
+    Actualiza el resultado de un problema de método gráfico.
+    """
+    problemaPL = (
+        p.titulo, 
+        p.descripcion, 
+        p.funcion_objetivo.tipo.upper(), 
+        resultado.funcion_objetivo,
+        problema_id
+        )
+    await actualizar_problema(db, problemaPL)
+    
     grafico_b64 = resultado.grafico
     if "," in grafico_b64:
         grafico_b64 = grafico_b64.split(",")[1]

@@ -51,10 +51,10 @@ async def listar_problemas(db: aiosqlite.Connection, offset: int):
 
     return lista_problemasPL
 
-async def actualizar_problema(db: aiosqlite.Connection, problema_id: str, problemaPL: ProblemaPL):
+async def actualizar_problema(db: aiosqlite.Connection, problemaPL):
     await db.execute(
         "UPDATE problemaPL SET titulo = ?, descripcion = ?, tipoOptimizacion = ?, funcionObjetivo = ? WHERE problemaID = ?",
-        (problemaPL.titulo, problemaPL.descripcion, problemaPL.tipoOptimizacion, problemaPL.funcionObjetivo, problema_id)
+         problemaPL
     )
     await db.commit()
     
