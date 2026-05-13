@@ -53,7 +53,7 @@ async def registrar(metodo: str, problema: dict, db: DbDep):
 
 @router.put("/actualizar", response_model=dict, status_code=status.HTTP_200_OK)
 async def actualizar(metodo: str, problema: dict, db: DbDep):
-    problema_id = problema.get("problemaID") or problema.get("id")
+    problema_id = problema.get("id")
     if not problema_id:
         raise HTTPException(status_code=400, detail="Falta el ID del problema para actualizar")
 
