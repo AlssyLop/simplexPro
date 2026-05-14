@@ -1,7 +1,8 @@
 import numpy as np
-from app.schemas.simplex_model import ProblemaPL, Iteracion
+from app.schemas.problemaPL import ProblemaPL
+from app.schemas.resultados import Iteracion, ResultadoSimplex
 
-def metodoSimplex(problemaPL: ProblemaPL):
+def metodoSimplex(problemaPL:ProblemaPL):
     """
     Método iterativo para resolver modelos de programación lineal (Simplex / Dos Fases o Gran M).
     Se usa Pandas para mostrar la tabla iterativa con formato ASCII.
@@ -24,7 +25,7 @@ def metodoSimplex(problemaPL: ProblemaPL):
         if signo == "<=":
             holguras.append(f"S{i+1}")
         elif signo == ">=":
-            holguras.append(f"E{i+1}")
+            holguras.append(f"S{i+1}")
             artificiales.append(f"A{i+1}")
         elif signo == "=":
             artificiales.append(f"A{i+1}")
@@ -37,7 +38,7 @@ def metodoSimplex(problemaPL: ProblemaPL):
 
     # Fila Z inicial
     for j, vk in enumerate(vars_keys):
-        val = fo.variables.get(vk, 0) if hasattr(fo, 'variables') else getattr(fo, vk, 0)
+        val = fo.variables.terminos[j].coeficiente
         tabla[z_row, j] = -val if tipo_opt == "max" else val
 
     base = []
@@ -47,9 +48,9 @@ def metodoSimplex(problemaPL: ProblemaPL):
     a_idx = 0
     for i, r in enumerate(restricciones):
         for j, vk in enumerate(vars_keys):
-            tabla[i, j] = r.variables.get(vk, 0) if hasattr(r, 'variables') else getattr(r, vk, 0)
+            tabla[i, j] = r.variables.terminos[j].coeficiente
 
-        tabla[i, -1] = r.valor
+        tabla[i, -1] = r.constante
 
         signo = r.signo
         if signo == "<=":
@@ -109,7 +110,6 @@ def metodoSimplex(problemaPL: ProblemaPL):
 
     tabla_ant = tabla_a_dict(tabla, list(base), list(cb))
     iteraciones = []
-    resultado = {}
 
     def guardar_iteracion(entra,sale,pivote,razon_minima):
         iteracion = Iteracion(
@@ -171,8 +171,7 @@ def metodoSimplex(problemaPL: ProblemaPL):
         guardar_iteracion(entra,sale,fmt(pivote),fmt(razon_minima))
         tabla_ant = tabla_a_dict(tabla, list(base), list(cb))
     
-    resultado["iteraciones"] = iteraciones
-
+    
     # --- Resultados finales ---
     z_val = tabla[z_row, -1]
     if tipo_opt == "min":
@@ -185,21 +184,28 @@ def metodoSimplex(problemaPL: ProblemaPL):
         valorFo += f"{fmt(val)}{vk} + "
         if fmt(val) != 0:
             vars_optimas += f"{fmt(val):,} {vars_nombres[vk]}, "
-    resultado["valor_fo"] = f"{valorFo.strip().rstrip('+').strip()} = {fmt(z_val):,}"
+    valor_fo = f"{valorFo.strip().rstrip('+').strip()} = {fmt(z_val):,}"
     vars_optimas = vars_optimas.strip().rstrip(',').strip()
     #Crear mensaje general para cualquier problema: 
+    tipo_texto = "máximo" if tipo_opt == "max" else "mínimo"
     if vars_optimas == "":
-        resultado["mensaje"] = (
-            f"El {tipo_opt.upper()} óptimo es: {fmt(z_val):,}"
+        mensaje = (
+            f"El valor óptimo de {tipo_texto} es {fmt(z_val):,}"
         )
     else:
-        resultado["mensaje"] = (
-            f"La solución óptima es: {vars_optimas} con la que se obtiene un {tipo_opt.upper()} de {fmt(z_val):,}"
+        mensaje = (
+            f"La solución óptima es {vars_optimas} con un valor {tipo_texto} de Z = {fmt(z_val):,}"
         )
     funcion_objetivo = f"{tipo_opt.upper()} Z = "
     for key, value in fo.items():
         if key != "tipo":
             funcion_objetivo += f"{value}{key} + "
-    
-    resultado["funcion_objetivo"] = funcion_objetivo.strip().rstrip('+').strip()
+    funcion_objetivo = funcion_objetivo.strip().rstrip('+').strip()
+
+    resultado = ResultadoSimplex(
+        iteraciones=iteraciones,
+        valorFO=valor_fo,
+        mensaje=mensaje,
+        funcion_objetivo=funcion_objetivo
+    )
     return resultado

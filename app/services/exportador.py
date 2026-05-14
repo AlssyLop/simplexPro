@@ -3,7 +3,7 @@ import base64
 from fpdf import FPDF
 import tempfile
 import os
-from app.schemas.grafico_model import MostrarResultadoGrafico
+from app.schemas.resultados import MostrarResultadoGrafico
 
 class PDFReport(FPDF):
     def header(self):
