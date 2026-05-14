@@ -1,5 +1,6 @@
 import aiosqlite
-from app.schemas.problemaPL_model import ResumenProblema, ProblemaPL
+import json
+from app.schemas.resultados import ListaResumenProblemas
 
 async def existe_problema(db, problemaID):
     """
@@ -21,35 +22,44 @@ async def registrar_problema(db, problemaPL):
     await db.commit()
     return row[0]
 
-async def registrar_variables(db, variables):
+async def registrar_variables(db, problema_id, variables):
+    variables_list = []
+    for variable, nombre in variables.items():
+        variables_list.append((variable, nombre, problema_id))
+        
     await db.executemany(
         "INSERT INTO variables (variable, nombre, problemaID) VALUES (?, ?, ?)",
-        variables
+        variables_list
     )
     await db.commit()
 
-async def registrar_restricciones(db, restricciones):
+async def registrar_restricciones(db, problema_id, restricciones):
+    restricciones_list = []
+    for restr in restricciones:
+        inecuacion = ""
+        for termino in restr.terminos:
+            inecuacion += f"{termino.coeficiente}{termino.variable} + "
+        inecuacion = inecuacion[:-2] + f" {restr.signo} {restr.constante}"
+        restricciones_list.append((problema_id, inecuacion, restr.glosa))
+        
     await db.executemany(
         "INSERT INTO restricciones (problemaID, inecuacion, glosa) VALUES (?, ?, ?)",
-        restricciones
+        restricciones_list
     )
     await db.commit()
 
 async def listar_problemas(db: aiosqlite.Connection, offset: int):
     cursor = await db.execute(
-        "SELECT problemaID, tipoOptimizacion, titulo, descripcion, fechaCreacion FROM problemaPL LIMIT 10 OFFSET ?",
+        "SELECT json_group_array(json_object('id', problemaID, 'tipoOptimizacion', tipoOptimizacion, 'titulo', titulo, 'descripcion', descripcion, 'fechaCreacion', fechaCreacion)) FROM problemaPL LIMIT 10 OFFSET ?",
         (offset,)
     )
-    lista_problemasPL = await cursor.fetchall()
-    lista_problemasPL = [ResumenProblema(
-            id = row[0],
-            tipoOptimizacion = row[1],
-            titulo = row[2],
-            descripcion = row[3],
-            fechaCreacion = row[4]
-        ) for row in lista_problemasPL]
-
-    return lista_problemasPL
+    lista_problemasPL = await cursor.fetchone()
+    
+    if lista_problemasPL is None:
+        return ListaResumenProblemas(problemas=[])
+    
+    problemas = json.loads(lista_problemasPL[0])
+    return ListaResumenProblemas(problemas=problemas)
 
 async def actualizar_problema(db: aiosqlite.Connection, problemaPL):
     await db.execute(

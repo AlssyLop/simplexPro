@@ -1,28 +1,21 @@
 import aiosqlite
 import json
 import base64
-from typing import Optional
-from app.schemas.grafico_model import ProblemaPL, Resultado, MostrarResultadoGrafico
 from app.repository.problemaPL_dao import registrar_problema, registrar_variables, registrar_restricciones, actualizar_problema
+from app.schemas.problemaPL import ProblemaPL
+from app.schemas.resultados import ResultadoGrafico, MostrarResultadoGrafico
 
-async def guardar_resultado_grafico(db: aiosqlite.Connection, p: ProblemaPL, resultado: Resultado):
+async def guardar_resultado_grafico(db: aiosqlite.Connection, p: ProblemaPL, resultado: ResultadoGrafico):
 
     problemaPL = (
         p.titulo, 
         p.descripcion, 
         p.funcion_objetivo.tipo.upper(), 
         resultado.funcion_objetivo
-        )
+    )
     problema_id = await registrar_problema(db, problemaPL)
-    
-    variables = [(var_key, var_nombre, problema_id) for var_key, var_nombre in p.variables.model_dump().items()]
-    await registrar_variables(db, variables)
-
-    restricciones = []
-    for restr in p.restricciones:
-        inecuacion = f"{restr.x}x + {restr.y}y {restr.signo} {restr.valor}"
-        restricciones.append((problema_id, inecuacion, restr.glosa))
-    await registrar_restricciones(db, restricciones)
+    await registrar_variables(db, problema_id, p.variables)
+    await registrar_restricciones(db, problema_id, p.restricciones)
     
     grafico_b64 = resultado.grafico
     if "," in grafico_b64:
@@ -36,10 +29,9 @@ async def guardar_resultado_grafico(db: aiosqlite.Connection, p: ProblemaPL, res
     )
     await db.commit()
     return problema_id
-    
 
 
-async def mostrar_resultado_grafico(db: aiosqlite.Connection, id: str) -> Optional[MostrarResultadoGrafico]:
+async def mostrar_resultado_grafico(db: aiosqlite.Connection, id: str) -> MostrarResultadoGrafico:
     query = """
         SELECT 
             p.problemaID,
@@ -80,7 +72,7 @@ async def mostrar_resultado_grafico(db: aiosqlite.Connection, id: str) -> Option
     return None
 
  
-async def actualizar_resultado_grafico(db: aiosqlite.Connection, problema_id: str, p: ProblemaPL, resultado: Resultado):
+async def actualizar_resultado_grafico(db: aiosqlite.Connection, problema_id: str, p: ProblemaPL, resultado: ResultadoGrafico):
     """
     Actualiza el resultado de un problema de método gráfico.
     """
@@ -90,7 +82,7 @@ async def actualizar_resultado_grafico(db: aiosqlite.Connection, problema_id: st
         p.funcion_objetivo.tipo.upper(), 
         resultado.funcion_objetivo,
         problema_id
-        )
+    )
     await actualizar_problema(db, problemaPL)
     
     grafico_b64 = resultado.grafico
