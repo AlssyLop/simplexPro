@@ -38,7 +38,13 @@ def metodoSimplex(problemaPL:ProblemaPL):
 
     # Fila Z inicial
     for j, vk in enumerate(vars_keys):
-        val = fo.variables.terminos[j].coeficiente
+        # Buscar el coeficiente en lista_terminos por el nombre de la variable
+        val = 0.0
+        if fo.lista_terminos:
+            for t in fo.lista_terminos:
+                if t.variable == vk:
+                    val = t.coeficiente
+                    break
         tabla[z_row, j] = -val if tipo_opt == "max" else val
 
     base = []
@@ -48,7 +54,13 @@ def metodoSimplex(problemaPL:ProblemaPL):
     a_idx = 0
     for i, r in enumerate(restricciones):
         for j, vk in enumerate(vars_keys):
-            tabla[i, j] = r.variables.terminos[j].coeficiente
+            val_r = 0.0
+            if r.lista_terminos:
+                for t in r.lista_terminos:
+                    if t.variable == vk:
+                        val_r = t.coeficiente
+                        break
+            tabla[i, j] = val_r
 
         tabla[i, -1] = r.constante
 
@@ -89,10 +101,10 @@ def metodoSimplex(problemaPL:ProblemaPL):
 
     # --- Helpers ---
     def fmt(v):
-        """Entero si no tiene decimales, float redondeado a 2 si los tiene."""
+        """Entero si no tiene decimales, float redondeado a entero si los tiene."""
         if isinstance(v, float) and abs(v) < 1e-8:
             return 0
-        rounded = round(float(v), 2)
+        rounded = round(float(v))
         return int(rounded) if rounded == int(rounded) else rounded
 
     def tabla_a_dict(tabla_np, base_actual, cb_actual):
@@ -197,9 +209,9 @@ def metodoSimplex(problemaPL:ProblemaPL):
             f"La solución óptima es {vars_optimas} con un valor {tipo_texto} de Z = {fmt(z_val):,}"
         )
     funcion_objetivo = f"{tipo_opt.upper()} Z = "
-    for key, value in fo.items():
-        if key != "tipo":
-            funcion_objetivo += f"{value}{key} + "
+    if fo.lista_terminos:
+        for t in fo.lista_terminos:
+            funcion_objetivo += f"{fmt(t.coeficiente)}{t.variable} + "
     funcion_objetivo = funcion_objetivo.strip().rstrip('+').strip()
 
     resultado = ResultadoSimplex(

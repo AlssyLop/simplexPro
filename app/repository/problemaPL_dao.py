@@ -37,9 +37,18 @@ async def registrar_restricciones(db, problema_id, restricciones):
     restricciones_list = []
     for restr in restricciones:
         inecuacion = ""
-        for termino in restr.terminos:
-            inecuacion += f"{termino.coeficiente}{termino.variable} + "
-        inecuacion = inecuacion[:-2] + f" {restr.signo} {restr.constante}"
+        # Si tiene lista_terminos (Simplex), usarla
+        if restr.lista_terminos:
+            for termino in restr.lista_terminos:
+                inecuacion += f"{termino.coeficiente}{termino.variable} + "
+            inecuacion = inecuacion.strip().rstrip("+").strip()
+        else:
+            # Si no (Gráfico), usar x e y
+            if restr.x != 0: inecuacion += f"{restr.x}x + "
+            if restr.y != 0: inecuacion += f"{restr.y}y + "
+            inecuacion = inecuacion.strip().rstrip("+").strip()
+            
+        inecuacion += f" {restr.signo} {restr.constante}"
         restricciones_list.append((problema_id, inecuacion, restr.glosa))
         
     await db.executemany(

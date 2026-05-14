@@ -57,10 +57,10 @@ def validar_problema_grafico(problema: dict):
                 raise HTTPException(status_code=400, detail=f"{prefijo}: falta signo")
             elif r["signo"] not in SIGNOS_GRAFICO:
                 raise HTTPException(status_code=400, detail=f"El signo de {prefijo} no es valido")
-            if "valor" not in r:
-                raise HTTPException(status_code=400, detail=f"{prefijo}: falta 'valor'")
-            elif not _es_numero(r["valor"]):
-                raise HTTPException(status_code=400, detail=f"{prefijo}: valor no es valido")
+            if "constante" not in r:
+                raise HTTPException(status_code=400, detail=f"{prefijo}: falta 'constante'")
+            elif not _es_numero(r["constante"]):
+                raise HTTPException(status_code=400, detail=f"{prefijo}: constante no es valida")
 
     # 4. Función objetivo
     if not isinstance(fo, dict):
@@ -125,10 +125,10 @@ def validar_problema_simplex(problema: dict):
             elif r["signo"] not in SIGNOS_SIMPLEX:
                 raise HTTPException(status_code=400, detail=f"Restricción {idx}: signo inválido. Use <=, >= o =.")
             # validar constante
-            if "valor" not in r:
-                raise HTTPException(status_code=400, detail=f"Restricción {idx}: falta valor constante.")
-            elif not _es_numero(r["valor"]):
-                raise HTTPException(status_code=400, detail=f"Restricción {idx}: valor constante debe ser numérico.")
+            if "constante" not in r:
+                raise HTTPException(status_code=400, detail=f"Restricción {idx}: falta constante.")
+            elif not _es_numero(r["constante"]):
+                raise HTTPException(status_code=400, detail=f"Restricción {idx}: la constante debe ser numérica.")
             
     # 4. Función objetivo
     if not isinstance(fo, dict):

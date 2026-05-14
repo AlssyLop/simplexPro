@@ -58,6 +58,7 @@ def metodoGrafico(problemaPL: ProblemaPL) -> ResultadoGrafico:
 
     # --- PASO 3: Evaluación de la Función Objetivo ---
     valoresFactibles = []
+    optimo = None
     if puntos_v:
         for v in puntos_v:
             px, py = v[0], v[1]
@@ -72,6 +73,7 @@ def metodoGrafico(problemaPL: ProblemaPL) -> ResultadoGrafico:
         
         
         # Poblar mensajes de éxito en el objeto Resultado
+        valoresFO = []
         for rv in valoresFactibles:
             tipo = f" ({tipo_opt.upper()})" if np.isclose(rv['z'], optimo['z']) else ""
             valoresFO.append(
@@ -79,7 +81,7 @@ def metodoGrafico(problemaPL: ProblemaPL) -> ResultadoGrafico:
             )
         
         tipo_texto = "máximo" if tipo_opt == "max" else "mínimo"
-        mensaje = f"La solución óptima es {_fmt_num(optimo['p'][0])} {vars_nombres[0]} y {_fmt_num(optimo['p'][1])} {vars_nombres[1]}, con un valor {tipo_texto} de Z = {optimo['z']:,.2f}"
+        mensaje = f"La solución óptima es {_fmt_num(optimo['p'][0])} {vars_nombres.get('x', 'x')} y {_fmt_num(optimo['p'][1])} {vars_nombres.get('y', 'y')}, con un valor {tipo_texto} de Z = {optimo['z']:,.2f}"
     else:
         # Mensaje de incompatibilidad si la lista está vacía
         mensaje = "No se encontró una región factible. Las restricciones son incompatibles."
@@ -152,8 +154,8 @@ def metodoGrafico(problemaPL: ProblemaPL) -> ResultadoGrafico:
     plt.grid(True, linestyle=':', alpha=0.6)
     plt.xlim(-0.5, max_x)
     plt.ylim(-0.5, max_y)
-    plt.xlabel(vars_nombres[0])
-    plt.ylabel(vars_nombres[1])
+    plt.xlabel(vars_nombres.get('x', 'x'))
+    plt.ylabel(vars_nombres.get('y', 'y'))
     plt.title(f"Método Gráfico - Optimización {tipo_opt.upper()}", fontsize=14)
     plt.legend(loc='upper right', fontsize=9)
 

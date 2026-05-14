@@ -13,14 +13,15 @@ class Termino(BaseModel):
     coeficiente: float
     variable: str
 
-class Restriccion(Variables):
-    terminos: Optional[List[Termino]] = None
-    signo: Literal["<=", "<", ">=", ">"]
+class ListaTerminos(BaseModel):
+    lista_terminos: Optional[List[Termino]] = None
+
+class Restriccion(Variables, ListaTerminos):
+    signo: Literal["<=", "<", ">=", ">", "="]
     constante: float
     glosa: Optional[str] = None
 
-class FuncionObjetivo(Variables):
-    terminos: Optional[List[Termino]] = None
+class FuncionObjetivo(Variables, ListaTerminos):
     tipo: Literal["max", "min"]
 
 class ProblemaPL(TituloDescripcion):
