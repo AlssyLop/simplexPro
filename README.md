@@ -78,10 +78,9 @@ Documentación Swagger: `http://localhost:8000/docs`.
 - **Ruta**: `GET /problemas`
 - **Query Params**: `page` (opcional, default: 1).
 - **Descripción**: Obtiene una lista paginada de los problemas registrados.
-- **Respuesta (200 OK)**: `ListaResumenProblemas` conteniendo listado de `ResumenProblema`.
+- **Respuesta (200 OK)**: Lista de `ResumenProblema`.
   ```json
-  {
-    "problemas": [
+  [
       {
         "id": "uuid",
         "titulo": "Nombre del problema",
@@ -90,24 +89,15 @@ Documentación Swagger: `http://localhost:8000/docs`.
         "fechaCreacion": "YYYY-MM-DD HH:MM:SS"
       }
     ]
-  }
   ```
 
-### 2. Obtener Solución Gráfica
-- **Ruta**: `GET /problemas/{id}/grafica`
-- **Descripción**: Recupera los detalles y la solución de un problema resuelto por el método gráfico.
-- **Respuesta (200 OK)**: `MostrarResultadoGrafico`.
-  - Incluye variables, restricciones (como inecuaciones), valores de la FO y el gráfico en base64.
+### 2. Obtener Solución del Problema
+- **Ruta**: `GET /problemas/{id}`
+- **Descripción**: Recupera los detalles y la solución de un problema por su ID. Retorna dinámicamente el resultado gráfico (`MostrarResultadoGrafico`) o simplex (`MostrarResultadoSimplex`) según corresponda.
+- **Respuesta (200 OK)**: `MostrarResultadoGrafico` o `MostrarResultadoSimplex`.
 - **Errores**: 404 si el problema no existe.
 
-### 3. Obtener Solución Simplex
-- **Ruta**: `GET /problemas/{id}/simplex`
-- **Descripción**: Recupera los detalles y la solución paso a paso de un problema resuelto por el método simplex.
-- **Respuesta (200 OK)**: `MostrarResultadoSimplex`.
-  - Incluye variables, restricciones, valor final de la FO y la lista de iteraciones (tablas simplex).
-- **Errores**: 404 si el problema no existe.
-
-### 4. Registrar Problema
+### 3. Registrar Problema
 - **Ruta**: `POST /problemas/registrar`
 - **Query Params**: `metodo` (obligatorio: "grafico" o "simplex").
 - **Cuerpo (JSON)**:
@@ -119,7 +109,7 @@ Documentación Swagger: `http://localhost:8000/docs`.
   3. Persiste el problema y el resultado en la base de datos.
 - **Respuesta (201 Created)**: `{"id": "uuid-del-problema-registrado"}`.
 
-### 5. Actualizar Problema
+### 4. Actualizar Problema
 - **Ruta**: `PUT /problemas/actualizar`
 - **Query Params**:
   - `metodo` (obligatorio: "grafico" o "simplex")
@@ -127,7 +117,7 @@ Documentación Swagger: `http://localhost:8000/docs`.
 - **Cuerpo (JSON)**: Misma estructura que el registro.
 - **Respuesta (200 OK)**: `{"mensaje": "Problema actualizado"}`.
 
-### 6. Eliminar Problema
+### 5. Eliminar Problema
 - **Ruta**: `DELETE /problemas/eliminar/{id}`
 - **Respuesta (200 OK)**: `{"mensaje": "Problema eliminado"}`.
 - **Errores**: 404 si no existe.
@@ -159,22 +149,22 @@ POST /problemas/registrar?metodo=simplex
     "descripcion": "Optimizar producción",
     "variables": { "x1": "Producto A", "x2": "Producto B", "x3": "Producto C" },
     "restricciones": [
-        { 
+        {
             "terminos": { "x1": 2, "x2": 1, "x3": 3 },
-            "signo": "<=", 
-            "constante": 100, 
-            "glosa": "Materia prima" 
+            "signo": "<=",
+            "constante": 100,
+            "glosa": "Materia prima"
         },
-        { 
+        {
             "terminos": { "x1": 1, "x2": 2, "x3": 1 },
-            "signo": ">=", 
-            "constante": 50, 
-            "glosa": "Mano de obra" 
+            "signo": ">=",
+            "constante": 50,
+            "glosa": "Mano de obra"
         }
     ],
-    "funcion_objetivo": { 
+    "funcion_objetivo": {
         "terminos": { "x1": 30, "x2": 20, "x3": 50 },
-        "tipo": "max" 
+        "tipo": "max"
     }
 }
 ```
@@ -191,7 +181,7 @@ POST /problemas/registrar?metodo=simplex
 ---
 
 ## Validaciones y Errores Comunes
-- **400 Bad Request**: 
+- **400 Bad Request**:
   - Falta de campos obligatorios (`titulo`, `variables`, `restricciones`, `funcion_objetivo`).
   - Formato incorrecto de variables (ej. para simplex deben ser `x1, x2...`).
   - Signos inválidos (Grafico: `<=, >=`; Simplex: `<=, >=, =`).

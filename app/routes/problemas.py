@@ -9,29 +9,29 @@ from app.repository.problemaPL_dao import listar_problemas, existe_problema, eli
 from app.services.grafico import metodoGrafico
 from app.services.simplex import metodoSimplex
 from app.schemas.problemaPL import ProblemaPL
-from app.schemas.resultados import ResultadoGrafico, ResultadoSimplex, MostrarResultadoGrafico, MostrarResultadoSimplex, ListaResumenProblemas
+from app.schemas.resultados import ResultadoGrafico, ResultadoSimplex, MostrarResultadoGrafico, MostrarResultadoSimplex, ResumenProblema
 
 router = APIRouter(prefix="/problemas", tags=["Problemas"])
 
-@router.get("", response_model=ListaResumenProblemas, status_code=status.HTTP_200_OK, description="Muestra un listado paginado de los problemas registrados")
+@router.get("", response_model=List[ResumenProblema], status_code=status.HTTP_200_OK, description="Muestra un listado paginado de los problemas registrados")
 async def obtener_problemas(db: DbDep, page: int = 1):
     if page < 1:
         raise HTTPException(status_code=400, detail="Pagina no valida")
     return await listar_problemas(db, offset=(page-1)*10)
 
-@router.get("/{id}/grafica", response_model=MostrarResultadoGrafico, status_code=status.HTTP_200_OK, description="Obtener solucion grafica")
-async def obtener_solucion_grafica(db: DbDep, id: str):
-    resultado = await mostrar_resultado_grafico(db, id)
-    if not resultado:
-        print(resultado)
+@router.get("/{id}", response_model=MostrarResultadoGrafico | MostrarResultadoSimplex, status_code=status.HTTP_200_OK, description="Obtener solucion grafica")
+async def obtener_solucion(db: DbDep, id: str):
+    metodo = await existe_problema(db, id)
+    if not metodo:
         raise HTTPException(status_code=404, detail="Problema no encontrado")
-    return resultado
 
-@router.get("/{id}/simplex", response_model=MostrarResultadoSimplex, status_code=status.HTTP_200_OK, description="Obtener solucion simplex")
-async def obtener_solucion_simplex(db: DbDep, id: str):
-    resultado = await mostrar_resultado_simplex(db, id)
-    if not resultado:
-        raise HTTPException(status_code=404, detail="Problema no encontrado")
+    if metodo == "Grafico":
+        resultado = await mostrar_resultado_grafico(db, id)
+    elif metodo == "Simplex":
+        resultado = await mostrar_resultado_simplex(db, id)
+    else:
+        raise HTTPException(status_code=400, detail="Metodo no valido")
+    
     return resultado
 
 @router.post("/registrar", response_model=dict, status_code=status.HTTP_201_CREATED, description="Registra un nuevo problema")
