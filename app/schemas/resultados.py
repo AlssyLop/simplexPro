@@ -5,10 +5,8 @@ from app.schemas.problemaPL import TituloDescripcion
 class ResumenProblema(TituloDescripcion):
     id:str
     tipoOptimizacion: str
+    metodo: Optional[str] = None
     fechaCreacion: str
-
-class ListaResumenProblemas(BaseModel):
-    problemas: List[ResumenProblema]
 
 class FuncionObjetivo(BaseModel):
     funcion_objetivo:str

@@ -5,6 +5,7 @@ CREATE TABLE problemaPL (
     descripcion TEXT,
     tipoOptimizacion TEXT NOT NULL CHECK(tipoOptimizacion IN ('MAX', 'MIN')),
     funcionObjetivo TEXT,
+    metodo TEXT NOT NULL,
     fechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

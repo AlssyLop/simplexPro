@@ -6,7 +6,7 @@ from app.schemas.resultados import ResultadoSimplex, MostrarResultadoSimplex, It
 
 async def guardar_resultado_simplex(db: aiosqlite.Connection, p: ProblemaPL, resultado: ResultadoSimplex):
     
-    problemaPL = (p.titulo, p.descripcion, p.funcion_objetivo.tipo.upper(), resultado.funcion_objetivo)
+    problemaPL = (p.titulo, p.descripcion, p.funcion_objetivo.tipo.upper(), resultado.funcion_objetivo, "Simplex")
     problema_id = await registrar_problema(db, problemaPL)
     
     await registrar_variables(db, problema_id, p.variables)

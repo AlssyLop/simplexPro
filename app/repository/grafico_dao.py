@@ -11,7 +11,8 @@ async def guardar_resultado_grafico(db: aiosqlite.Connection, p: ProblemaPL, res
         p.titulo, 
         p.descripcion, 
         p.funcion_objetivo.tipo.upper(), 
-        resultado.funcion_objetivo
+        resultado.funcion_objetivo,
+        "Grafico"
     )
     problema_id = await registrar_problema(db, problemaPL)
     await registrar_variables(db, problema_id, p.variables)
@@ -33,11 +34,11 @@ async def guardar_resultado_grafico(db: aiosqlite.Connection, p: ProblemaPL, res
 
 async def mostrar_resultado_grafico(db: aiosqlite.Connection, id: str) -> MostrarResultadoGrafico:
     query = """
-        SELECT 
+        SELECT
             p.problemaID,
-            p.titulo, 
-            p.descripcion, 
-            p.tipoOptimizacion, 
+            p.titulo,
+            p.descripcion,
+            p.tipoOptimizacion,
             p.funcionObjetivo,
             p.fechaCreacion,
             mg.valoresFO,
