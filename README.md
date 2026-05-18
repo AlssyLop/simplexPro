@@ -72,59 +72,63 @@ Documentación Swagger: `http://localhost:8000/docs`.
 
 ---
 
-## Endpoints de Problemas (`/problema`)
+## Endpoints de Problemas (`/problemas`)
 
 ### 1. Listar Problemas
-- **Ruta**: `GET /problema/listar`
+- **Ruta**: `GET /problemas`
 - **Query Params**: `page` (opcional, default: 1).
 - **Descripción**: Obtiene una lista paginada de los problemas registrados.
-- **Respuesta (200 OK)**: Lista de `ResumenProblema`.
+- **Respuesta (200 OK)**: `ListaResumenProblemas` conteniendo listado de `ResumenProblema`.
   ```json
-  [
-    {
-      "id": "uuid",
-      "titulo": "Nombre del problema",
-      "descripcion": "Opcional",
-      "tipoOptimizacion": "max/min",
-      "fechaCreacion": "YYYY-MM-DD HH:MM:SS"
-    }
-  ]
+  {
+    "problemas": [
+      {
+        "id": "uuid",
+        "titulo": "Nombre del problema",
+        "descripcion": "Opcional",
+        "tipoOptimizacion": "max/min",
+        "fechaCreacion": "YYYY-MM-DD HH:MM:SS"
+      }
+    ]
+  }
   ```
 
 ### 2. Obtener Solución Gráfica
-- **Ruta**: `GET /problema/solucion/grafica/{id}`
+- **Ruta**: `GET /problemas/{id}/grafica`
 - **Descripción**: Recupera los detalles y la solución de un problema resuelto por el método gráfico.
 - **Respuesta (200 OK)**: `MostrarResultadoGrafico`.
   - Incluye variables, restricciones (como inecuaciones), valores de la FO y el gráfico en base64.
 - **Errores**: 404 si el problema no existe.
 
 ### 3. Obtener Solución Simplex
-- **Ruta**: `GET /problema/solucion/simplex/{id}`
+- **Ruta**: `GET /problemas/{id}/simplex`
 - **Descripción**: Recupera los detalles y la solución paso a paso de un problema resuelto por el método simplex.
 - **Respuesta (200 OK)**: `MostrarResultadoSimplex`.
   - Incluye variables, restricciones, valor final de la FO y la lista de iteraciones (tablas simplex).
 - **Errores**: 404 si el problema no existe.
 
 ### 4. Registrar Problema
-- **Ruta**: `POST /problema/registrar`
+- **Ruta**: `POST /problemas/registrar`
 - **Query Params**: `metodo` (obligatorio: "grafico" o "simplex").
 - **Cuerpo (JSON)**:
   - Para `grafico`: Requiere `x`, `y` en variables, restricciones y FO.
-  - Para `simplex`: Requiere variables tipo `x1`, `x2`, ..., `xn`.
+  - Para `simplex`: Requiere variables tipo `x1`, `x2`, ..., `xn` y términos estructurados en un diccionario `terminos`.
 - **Flujo**:
   1. Valida la estructura según el método.
   2. Ejecuta el servicio correspondiente (`metodoGrafico` o `metodoSimplex`).
   3. Persiste el problema y el resultado en la base de datos.
-- **Respuesta (201 Created)**: `{"mensaje": "Problema guardado"}`.
+- **Respuesta (201 Created)**: `{"id": "uuid-del-problema-registrado"}`.
 
 ### 5. Actualizar Problema
-- **Ruta**: `PUT /problema/actualizar`
-- **Query Params**: `metodo` ("grafico" o "simplex").
-- **Cuerpo (JSON)**: Similar al registro, pero debe incluir `problemaID` o `id`.
+- **Ruta**: `PUT /problemas/actualizar`
+- **Query Params**:
+  - `metodo` (obligatorio: "grafico" o "simplex")
+  - `id` (obligatorio: ID del problema a actualizar)
+- **Cuerpo (JSON)**: Misma estructura que el registro.
 - **Respuesta (200 OK)**: `{"mensaje": "Problema actualizado"}`.
 
 ### 6. Eliminar Problema
-- **Ruta**: `DELETE /problema/eliminar/{id}`
+- **Ruta**: `DELETE /problemas/eliminar/{id}`
 - **Respuesta (200 OK)**: `{"mensaje": "Problema eliminado"}`.
 - **Errores**: 404 si no existe.
 
@@ -133,14 +137,14 @@ Documentación Swagger: `http://localhost:8000/docs`.
 ### Método Gráfico (2 variables)
 
 ```json
-POST /problema/registrar?metodo=grafico
+POST /problemas/registrar?metodo=grafico
 {
     "titulo": "Problema de ejemplo",
     "descripcion": "Optimizar producción",
     "variables": { "x": "Producto A", "y": "Producto B" },
     "restricciones": [
-        { "x": 2, "y": 3, "signo": "<=", "valor": 100, "glosa": "Materia prima" },
-        { "x": 1, "y": 2, "signo": "<=", "valor": 80, "glosa": "Mano de obra" }
+        { "x": 2, "y": 3, "signo": "<=", "constante": 100, "glosa": "Materia prima" },
+        { "x": 1, "y": 2, "signo": "<=", "constante": 80, "glosa": "Mano de obra" }
     ],
     "funcion_objetivo": { "x": 50, "y": 40, "tipo": "max" }
 }
@@ -149,16 +153,29 @@ POST /problema/registrar?metodo=grafico
 ### Método Simplex (N variables)
 
 ```json
-POST /problema/registrar?metodo=simplex
+POST /problemas/registrar?metodo=simplex
 {
     "titulo": "Problema simplex",
     "descripcion": "Optimizar producción",
-    "variables": { "x1": "Producto A", "x2": "Producto B", "x3": "Producto C", "xn" ...},
+    "variables": { "x1": "Producto A", "x2": "Producto B", "x3": "Producto C" },
     "restricciones": [
-        { "x1": 2, "x2": 1, "x3": 3, "signo": "<=", "valor": 100, "glosa": "Materia prima" },
-        { "x1": 1, "x2": 2, "x3": 1, "signo": ">=", "valor": 50, "glosa": "Mano de obra" }
+        { 
+            "terminos": { "x1": 2, "x2": 1, "x3": 3 },
+            "signo": "<=", 
+            "constante": 100, 
+            "glosa": "Materia prima" 
+        },
+        { 
+            "terminos": { "x1": 1, "x2": 2, "x3": 1 },
+            "signo": ">=", 
+            "constante": 50, 
+            "glosa": "Mano de obra" 
+        }
     ],
-    "funcion_objetivo": { "x1": 30, "x2": 20, "x3": 50, "tipo": "max" }
+    "funcion_objetivo": { 
+        "terminos": { "x1": 30, "x2": 20, "x3": 50 },
+        "tipo": "max" 
+    }
 }
 ```
 
