@@ -10,6 +10,7 @@ def metodoSimplex(problemaPL:ProblemaPL):
     vars_nombres = problemaPL.variables
     restricciones = problemaPL.restricciones
     fo = problemaPL.funcion_objetivo
+    terminos = fo.terminos
     tipo_opt = fo.tipo.lower()
 
     vars_keys = list(vars_nombres.keys())
@@ -38,13 +39,7 @@ def metodoSimplex(problemaPL:ProblemaPL):
 
     # Fila Z inicial
     for j, vk in enumerate(vars_keys):
-        # Buscar el coeficiente en lista_terminos por el nombre de la variable
-        val = 0.0
-        if fo.lista_terminos:
-            for t in fo.lista_terminos:
-                if t.variable == vk:
-                    val = t.coeficiente
-                    break
+        val = terminos.get(vk,0)
         tabla[z_row, j] = -val if tipo_opt == "max" else val
 
     base = []
@@ -54,13 +49,7 @@ def metodoSimplex(problemaPL:ProblemaPL):
     a_idx = 0
     for i, r in enumerate(restricciones):
         for j, vk in enumerate(vars_keys):
-            val_r = 0.0
-            if r.lista_terminos:
-                for t in r.lista_terminos:
-                    if t.variable == vk:
-                        val_r = t.coeficiente
-                        break
-            tabla[i, j] = val_r
+            tabla[i, j] = r.terminos.get(vk,0)
 
         tabla[i, -1] = r.constante
 
@@ -139,12 +128,12 @@ def metodoSimplex(problemaPL:ProblemaPL):
 
         if tipo_opt == "max":
             if np.all(z_vals >= -1e-8):
-                guardar_iteracion("","","","")    
+                guardar_iteracion("","","","")
                 break
             col_pivote = int(np.argmin(z_vals))
         else:
             if np.all(z_vals <= 1e-8):
-                guardar_iteracion("","","","") 
+                guardar_iteracion("","","","")
                 break
             col_pivote = int(np.argmax(z_vals))
 
@@ -174,7 +163,7 @@ def metodoSimplex(problemaPL:ProblemaPL):
 
         base[fila_pivote] = entra
         if entra in vars_keys:
-            cb[fila_pivote] = fo.get(entra, 0) if tipo_opt == "max" else -fo.get(entra, 0)
+            cb[fila_pivote] = terminos.get(entra, 0) if tipo_opt == "max" else -terminos.get(entra, 0)
         elif entra in holguras:
             cb[fila_pivote] = 0
         elif entra in artificiales:
@@ -209,9 +198,8 @@ def metodoSimplex(problemaPL:ProblemaPL):
             f"La solución óptima es {vars_optimas} con un valor {tipo_texto} de Z = {fmt(z_val):,}"
         )
     funcion_objetivo = f"{tipo_opt.upper()} Z = "
-    if fo.lista_terminos:
-        for t in fo.lista_terminos:
-            funcion_objetivo += f"{fmt(t.coeficiente)}{t.variable} + "
+    for var, coef in terminos.items():
+        funcion_objetivo += f"{fmt(coef)}{var} + "
     funcion_objetivo = funcion_objetivo.strip().rstrip('+').strip()
 
     resultado = ResultadoSimplex(

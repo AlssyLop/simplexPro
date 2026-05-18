@@ -15,7 +15,7 @@ router = APIRouter(prefix="/problemas", tags=["Problemas"])
 
 @router.get("", response_model=ListaResumenProblemas, status_code=status.HTTP_200_OK, description="Muestra un listado paginado de los problemas registrados")
 async def obtener_problemas(db: DbDep, page: int = 1):
-    if page < 1: 
+    if page < 1:
         raise HTTPException(status_code=400, detail="Pagina no valida")
     return await listar_problemas(db, offset=(page-1)*10)
 
@@ -23,6 +23,7 @@ async def obtener_problemas(db: DbDep, page: int = 1):
 async def obtener_solucion_grafica(db: DbDep, id: str):
     resultado = await mostrar_resultado_grafico(db, id)
     if not resultado:
+        print(resultado)
         raise HTTPException(status_code=404, detail="Problema no encontrado")
     return resultado
 
@@ -43,8 +44,7 @@ async def registrar(metodo: str, problema: dict, db: DbDep):
     elif metodo == "simplex":
         validar_problema_simplex(problema)
         p = ProblemaPL(**problema)
-        res_dict = metodoSimplex(p)
-        res = ResultadoSimplex(**res_dict)
+        res = metodoSimplex(p)
         id = await guardar_resultado_simplex(db, p, res)
     else:
         raise HTTPException(status_code=400, detail="Metodo no valido")
@@ -67,8 +67,7 @@ async def actualizar(metodo: str, id: str, problema: dict, db: DbDep):
     else:
         validar_problema_simplex(problema)
         p = ProblemaPL(**problema)
-        res_dict = metodoSimplex(p)
-        res = ResultadoSimplex(**res_dict)
+        res = metodoSimplex(p)
         await actualizar_resultado_simplex(db, id, res)
         
     return {"mensaje": "Problema actualizado"}

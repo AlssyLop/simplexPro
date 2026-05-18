@@ -45,7 +45,7 @@ def validar_problema_grafico(problema: dict):
         raise HTTPException(status_code=400, detail="restricciones es requerido")
     else:
         for idx, r in enumerate(restricciones):
-            prefijo = f"la restricción ({idx + 1})"
+            prefijo = f"Restricción ({idx + 1})"
             if not isinstance(r, dict):
                 raise HTTPException(status_code=400, detail=f"{prefijo}: no es valido")
             for var in ("x", "y"):
@@ -97,7 +97,7 @@ def validar_problema_simplex(problema: dict):
 
     # 2. Variables: dict con al menos 1 variable, nombres tipo string
     if not isinstance(variables, dict) or len(variables) == 0:
-        raise HTTPException(status_code=400, detail="'Las variables' no son validas.")
+        raise HTTPException(status_code=400, detail="Las variables no son validas.")
     else:
         #validar si var tiene el formato x1, x2, x3...xn
         for var, nombre in variables.items():
@@ -108,38 +108,45 @@ def validar_problema_simplex(problema: dict):
 
     # 3. Restricciones: lista no vacía
     if not isinstance(restricciones, list) or len(restricciones) == 0:
-        raise HTTPException(status_code=400, detail="'restricciones' no son validas.")
+        raise HTTPException(status_code=400, detail="Las restricciones no son validas.")
     else:
         for idx, r in enumerate(restricciones):
+            prefijo = f"Restricción ({idx + 1})"
             if not isinstance(r, dict):
-                raise HTTPException(status_code=400, detail="Restricción inválida.")
+                raise HTTPException(status_code=400, detail=f"{prefijo}: no es valida.")
             # validar coeficientes con el fromato x1, x2, x3...xn
-            for var in variables.keys():
-                if var not in r:
-                    raise HTTPException(status_code=400, detail=f"Restricción {idx}: falta coeficiente '{var}'")
-                elif not _es_numero(r[var]):
-                    raise HTTPException(status_code=400, detail=f"Restricción {idx}: el coeficiente '{var}' no es valido")
+            if not isinstance(r["terminos"], dict):
+                raise HTTPException(status_code=400, detail=f"{prefijo}: los términos no son validos.")
+            else:
+                terminos = r["terminos"]
+                for var, coef in terminos.items():
+                    if not re.match(r'^x\d+$', var):
+                        raise HTTPException(status_code=400, detail=f"{prefijo}: la variable '{var}' no es valida.")
+                    elif not _es_numero(coef):
+                        raise HTTPException(status_code=400, detail=f"{prefijo}: {var}{coef} no es valido.")
             # validar signo
             if "signo" not in r:
-                raise HTTPException(status_code=400, detail=f"Restricción {idx}: falta signo.")
+                raise HTTPException(status_code=400, detail=f"{prefijo}: falta signo.")
             elif r["signo"] not in SIGNOS_SIMPLEX:
-                raise HTTPException(status_code=400, detail=f"Restricción {idx}: signo inválido. Use <=, >= o =.")
+                raise HTTPException(status_code=400, detail=f"{prefijo}: signo inválido.")
             # validar constante
             if "constante" not in r:
-                raise HTTPException(status_code=400, detail=f"Restricción {idx}: falta constante.")
+                raise HTTPException(status_code=400, detail=f"{prefijo}: falta constante.")
             elif not _es_numero(r["constante"]):
-                raise HTTPException(status_code=400, detail=f"Restricción {idx}: la constante debe ser numérica.")
+                raise HTTPException(status_code=400, detail=f"{prefijo}: la constante debe ser numérica.")
             
     # 4. Función objetivo
     if not isinstance(fo, dict):
         raise HTTPException(status_code=400, detail="'función objetivo' no es valida")
     else:
-        # validar que las variables de la FO sean validas:
-        for var in variables.keys():
-            if var not in fo:
-                raise HTTPException(status_code=400, detail=f"El coeficiente '{var}' no es valido")
-            elif not _es_numero(fo[var]):
-                raise HTTPException(status_code=400, detail=f"El coeficiente '{var}' no es valido")
+        terminos = fo["terminos"]
+        for var, coef in terminos.items():
+            if not isinstance(var, str):
+                raise HTTPException(status_code=400, detail=f"La función objetivo: la variable no es valida.")
+            elif not re.match(r'^x\d+$', var):
+                raise HTTPException(status_code=400, detail=f"La función objetivo: la variable no es valida.")
+            elif not _es_numero(coef):
+                raise HTTPException(status_code=400, detail=f"La función objetivo: el coeficiente no es valido.")
         # validar tipo
         if "tipo" not in fo:
             raise HTTPException(status_code=400, detail="Tipo de optimización faltante en FO.")

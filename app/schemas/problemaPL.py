@@ -9,20 +9,15 @@ class Variables(BaseModel):
     x: Optional[float] = 0.0
     y: Optional[float] = 0.0
 
-class Termino(BaseModel):
-    coeficiente: float
-    variable: str
-
-class ListaTerminos(BaseModel):
-    lista_terminos: Optional[List[Termino]] = None
-
-class Restriccion(Variables, ListaTerminos):
+class Restriccion(Variables):
+    terminos: Optional[Dict[str, float]] = None
     signo: Literal["<=", "<", ">=", ">", "="]
     constante: float
     glosa: Optional[str] = None
 
-class FuncionObjetivo(Variables, ListaTerminos):
+class FuncionObjetivo(Variables):
     tipo: Literal["max", "min"]
+    terminos: Optional[Dict[str, float]] = None
 
 class ProblemaPL(TituloDescripcion):
     x: Optional[str] = "x"

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from app.schemas.problemaPL import TituloDescripcion
 
 class ResumenProblema(TituloDescripcion):
@@ -22,9 +22,9 @@ class Iteracion(BaseModel):
     iteracion: int
     entra: str
     sale: str
-    razonMinima: float
-    elementoPivote: float
-    tabla: Dict[str, List[str]]
+    razonMinima: Union[float, str, None]
+    elementoPivote: Union[float, str, None]
+    tabla: Dict[str, List[Union[float, str, None, int]]]
 
 class ResultadoSimplex(FuncionObjetivo):
     valorFO: str
@@ -32,7 +32,7 @@ class ResultadoSimplex(FuncionObjetivo):
 
 class InecuacionGlosa(BaseModel):
     inecuacion: str
-    glosa: str
+    glosa: Optional[str] = None
 
 class MostrarResultadoGrafico(ResumenProblema, ResultadoGrafico):
     variables: Dict[str, str]
